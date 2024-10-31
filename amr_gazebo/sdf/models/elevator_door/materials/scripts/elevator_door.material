@@ -1,0 +1,13 @@
+material Elevator_door/Picture
+{
+  technique
+  {
+    pass
+    {
+      texture_unit
+      {
+        texture elevator_door.jpg
+      }
+    }
+  }
+}

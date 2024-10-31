@@ -1,0 +1,47 @@
+<launch>
+    <arg name="filters"         default=""/>
+    <arg name="align_depth"     default="false"/>
+    <arg name="depth_width"     default="640"/>
+    <arg name="depth_height"    default="480"/>
+    <arg name="color_width"     default="640"/>
+    <arg name="color_height"    default="480"/>
+    <arg name="color_fps"       default="15"/>
+    <arg name="depth_fps"       default="30"/>
+
+    <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+      <arg name="filters"         value="$(arg filters)"/>
+      <arg name="align_depth"     value="$(arg align_depth)"/>
+      <arg name="depth_width"     value="$(arg depth_width)"/>
+      <arg name="depth_height"    value="$(arg depth_height)"/>
+      <arg name="color_width"     value="$(arg color_width)"/>
+      <arg name="color_height"    value="$(arg color_height)"/>
+      <arg name="color_fps"       value="$(arg color_fps)"/>
+      <arg name="depth_fps"       value="$(arg depth_fps)"/>
+      <arg name="initial_reset" value="true"/>
+      <!-- <arg name="base_frame_id" value="intelrealsense_link" /> -->
+    </include>
+    
+
+  <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan" output="screen" >
+    <param name="scan_height" value="20"/>
+    <param name="output_frame_id" value="camera_depth_frame"/>
+    <param name="range_min" value="0.2"/>
+    <param name="range_max" value="5.0"/>
+    <remap from="image" to="/camera/depth/image_rect_raw"/>
+    <remap from="scan" to="/rsD435i_scan" />  
+  </node> 
+    <!-- <arg name="depth_image" default="/camera/depth/image_rect_raw"/>
+    <arg name="scan" default="/rsD435i_scan"/>
+
+    <node pkg="nodelet" type="nodelet" name="full_depthimage_to_laserscan"
+          args="standalone full_depthimage_to_laserscan/DepthImageToLaserScanNodelet"  output="screen" required="true">
+      <param name="scan_height" value="419"/>
+      <param name="output_frame_id" value="camera_depth_frame"/>
+      <param name="range_min" value="0.45"/>
+      <remap from="image" to="$(arg depth_image)"/>
+      <remap from="scan" to="$(arg scan)"/>
+      <param name="floor_dist" value="0.20"/>
+      <param name="overhead_dist" value="0.60"/>
+    </node> -->
+
+</launch>

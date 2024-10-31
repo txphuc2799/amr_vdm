@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!--==== SICK NANO SCAN3 ====-->
+    <xacro:property name = 'sick_nanoscan3_length' value = '0.1025'/>
+    <xacro:property name = 'sick_nanoscan3_width' value = '0.1056'/>
+    <xacro:property name = 'sick_nanoscan3_height' value = '0.079017'/>
+    <xacro:property name = 'sick_nanoscan3_mass' value = '0.5'/>
+    <xacro:property name = 'back_sick_dx' value = '-0.68722'/>
+    <xacro:property name = 'back_sick_dy' value = '-0.00034498'/>
+    <xacro:property name = 'back_sick_dz' value = '-0.036676'/>
+    <xacro:property name = 'front_sick_dx' value = '0.14802'/>
+    <xacro:property name = 'front_sick_dy' value = '0.0'/>
+    <xacro:property name = 'front_sick_dz' value = '0.083824'/>
+    
+    <xacro:macro name="sick_nanoscan3" params="prefix parent dx dy dz rotate min_angle max_angle">
+        <link name = '${prefix}_laser_link'>
+            <visual>
+                <origin xyz="0.0 0.0 0.0" rpy="0 0 ${rotate}" />
+                <geometry>
+                    <mesh filename="package://amr_description/meshes/sensor/laser_${prefix}_link.STL"/>
+                </geometry>
+                <material name = 'black'/>
+            </visual>
+
+            <collision>
+                <origin xyz="0.0 0.0 0.0" rpy="0 0 ${rotate}" />
+                <geometry>
+                    <mesh filename="package://amr_description/meshes/sensor/laser_${prefix}_link.STL"/>
+                </geometry>
+            </collision>
+
+            <xacro:inertial_box mass="${sick_nanoscan3_mass}" x="${sick_nanoscan3_length}" y="${sick_nanoscan3_width}" z="${sick_nanoscan3_height}">
+                <origin xyz="0 0 0" rpy="0 0 ${rotate}"/>
+            </xacro:inertial_box>
+        </link>
+
+        <joint name = '${prefix}_laser_joint' type = 'fixed'>
+            <parent link = '${parent}_link'/>
+            <child link = '${prefix}_laser_link'/>
+            <origin xyz="${dx} ${dy} ${dz}" rpy="0.0 0.0 ${rotate}" />
+        </joint>
+
+        <gazebo reference = '${prefix}_laser_link'>
+            <material>Gazebo/Black</material>
+            <sensor type="ray" name="${prefix}_laser">
+                <pose>0 0 0 0 0 0</pose>
+                <visualize>false</visualize>
+                <update_rate>25</update_rate> <!--15-->
+                <ray>
+                    <scan>
+                        <horizontal>
+                            <samples>720</samples> <!--541-->
+                            <resolution>1</resolution>  <!-- has to be 1; actual resolution will be computed from number of samples + min_angle/max_angle -->
+                            <min_angle>${min_angle}</min_angle> 
+                            <max_angle>${max_angle}</max_angle>
+                        </horizontal>
+                    </scan>
+                    <range>
+                        <min>0.1</min>
+                        <max>40.0</max> <!--10-->
+                        <resolution>0.01</resolution>
+                    </range>
+                    <noise>
+                        <type>gaussian</type>
+                        <!-- Noise parameters based on published spec for S300 achieving
+                            "+-29mm" accuracy at range < 3m (~0.01 of the range) at
+                            1 sigma. -->
+                        <mean>0.0</mean>
+                        <stddev>0.01</stddev>
+                    </noise>
+                </ray>
+                <plugin name="gazebo_${prefix}_laser_controller" filename="libgazebo_ros_laser.so">
+                    <frameName>${prefix}_laser_link</frameName>
+                    <topicName>${prefix}_scan</topicName>
+                </plugin>
+            </sensor>
+        </gazebo>
+    </xacro:macro>
+    <xacro:sick_nanoscan3 prefix="front" parent="base" dx="${front_sick_dx}" dy="${front_sick_dy}" dz="${front_sick_dz}" rotate="0.0" min_angle="-1.91986217" max_angle="1.91986217"/>
+    <xacro:sick_nanoscan3 prefix="back" parent="slider" dx="${back_sick_dx}" dy="${back_sick_dy}" dz="${back_sick_dz}" rotate="${pi}" min_angle="-2.181661565" max_angle="2.181661565"/>
+</robot>

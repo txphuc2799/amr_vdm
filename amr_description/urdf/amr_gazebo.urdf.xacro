@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name = 'amr'>
+
+    <!-- AMR CORE -->
+    <xacro:include filename = '$(find amr_description)/urdf/amr_urdf/amr_core.xacro'/>
+
+    <!-- REALSENSE CAMERA -->
+    <xacro:include filename = '$(find amr_description)/urdf/sensor_urdf/realsense_camera.xacro'/>
+    
+    <!-- IMU URDF & CONFIG -->
+    <xacro:include filename = '$(find amr_description)/urdf/sensor_urdf/imu.xacro'/>
+
+    <!-- LASER URDF & CONFIG -->
+    <xacro:include filename = '$(find amr_description)/urdf/sensor_urdf/laser_scanner.xacro'/>
+
+    <!-- ROS CONTROLLER GAZEBO PLUGIN -->
+    <xacro:include filename = '$(find amr_description)/urdf/gazebo_urdf/amr_common_gazebo.xacro'/>
+
+    <!-- TRANSMISSION TAG -->
+    <xacro:include filename = '$(find amr_description)/urdf/amr_urdf/amr_transmission.xacro'/>
+
+    <!-- GAZEBO CONTROLLER -->
+    <!-- <xacro:include filename = '$(find amr_description)/urdf/gazebo_urdf/amr_gazebo.xacro'/> -->
+</robot>

@@ -1,0 +1,5 @@
+joint_position_controller:
+  type: position_controllers/JointPositionController
+  joint: slider_joint
+  publish_rate: 50
+  # pid: {p: 100.0, i: 0.01, d: 10.0}

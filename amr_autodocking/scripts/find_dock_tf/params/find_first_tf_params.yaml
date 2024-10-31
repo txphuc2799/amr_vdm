@@ -1,0 +1,13 @@
+length_vector_a: 0.09
+length_vector_b: 0.1
+pattern_angle_ab: 4.7124
+pattern_angle_bc: 0
+pattern_angle_ad: 3.14159265
+angle_threshold: 0.5
+length_tolerance: 0.08
+detect_angle_tol: 0.15
+pattern_dis_ad: 0.359
+pattern_dis_bc: 0.18
+pattern_dis_ab: 0.05
+laser_frame_id: back_laser_link
+dock_name: first_frame

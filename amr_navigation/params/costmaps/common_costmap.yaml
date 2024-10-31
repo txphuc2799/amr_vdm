@@ -1,0 +1,86 @@
+robot_base_frame: base_footprint
+transform_tolerance: 0.4
+obstacle_range: 5.0  
+# mark_threshold: 1
+publish_voxel_map: true
+navigation_map:
+  map_topic: /map
+obstacles:
+  observation_sources: back_scan_amr front_scan_amr
+  back_scan_amr:
+    topic: /back_scan_rep117
+    data_type: LaserScan
+    clearing: true
+    marking: true
+    inf_is_valid: true
+    min_obstacle_height: 0.05
+    max_obstacle_height: 0.25
+  front_scan_amr:
+    topic: /front_scan_rep117
+    data_type: LaserScan
+    clearing: true
+    marking: true
+    inf_is_valid: true
+    min_obstacle_height: 0.05
+    max_obstacle_height: 0.25
+
+virtual_walls_map:
+  map_topic: /virtual_walls/map
+  use_maximum: true
+
+speed_filter:
+  map_topic: /speed_filter/map
+  binary_state_topic: /binary_state
+  enable: true
+
+disable_obstacle:
+  map_topic: /disable_obstacle/map
+  global_obtascle_srv_name: /move_base_node/global_costmap/obstacles/set_parameters
+  local_obstacle_srv_name: /move_base_node/local_costmap/obstacles/set_parameters
+  enable: true
+  max_height_obstacle: 0.25
+
+# rgbd_obstacle_layer:
+#   enabled:               true
+#   voxel_decay:           0.25    #seconds if linear, e^n if exponential
+#   decay_model:           0      #0=linear, 1=exponential, -1=persistent
+#   voxel_size:            0.05   #meters
+#   track_unknown_space:   true   #default space is unknown
+#   observation_persistence: 0.0  #seconds
+#   max_obstacle_height:   2.0    #meters
+#   unknown_threshold:     15     #voxel height
+#   mark_threshold:        0      #voxel height
+#   update_footprint_enabled: true
+#   combination_method:    1      #1=max, 0=override
+#   obstacle_range:        3.0    #meters
+#   origin_z:              0.0    #meters
+#   publish_voxel_map:     true   # default off
+#   transform_tolerance:   0.2    # seconds
+#   mapping_mode:          false  # default off, saves map not for navigation
+#   map_save_duration:     60     #default 60s, how often to autosave
+#   observation_sources:   front_camera_scan_mark front_camera_scan_clear
+#   front_camera_scan_mark:
+#     data_type: LaserScan
+#     topic: /front_camera/scan
+#     marking: true
+#     clearing: false
+#     min_obstacle_height: 0.1     #default 0, meters
+#     max_obstacle_height: 1.0     #defaule 3, meters
+#     expected_update_rate: 0.0    #default 0, if not updating at this rate at least, remove from buffer
+#     observation_persistence: 0.0 #default 0, use all measurements taken during now-value, 0=latest 
+#     inf_is_valid: true           #default false, for laser scans
+#     clear_after_reading: true    #default false, clear the buffer after the layer gets readings from it
+#     filter: "voxel"              #default passthrough, apply "voxel", "passthrough", or no filter to sensor data, recommended to have at one filter on
+#     voxel_min_points: 0          #default 0, minimum points per voxel for voxel filter
+#   front_camera_scan_clear:
+#     enabled: true                #default true, can be toggled on/off with associated service call
+#     data_type: LaserScan
+#     topic: /front_camera/scan
+#     marking: false
+#     clearing: true
+#     min_z: 0.1                   #default 0, meters
+#     max_z: 7.0                   #default 10, meters
+#     vertical_fov_angle: 0.7      #default 0.7, radians
+#     horizontal_fov_angle: 1.04   #default 1.04, radians
+#     decay_acceleration: 0        #default 0, 1/s^2. If laser scanner MUST be 0
+#     model_type: 0                #default 0 (depth camera). Use 1 for 3D Lidar

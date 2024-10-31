@@ -1,0 +1,50 @@
+<launch>
+      <arg name="namespace" default="amr" />
+
+      <include file="$(find amr_autodocking)/launch/autodocking.launch"/>
+      <include file="$(find amr_base)/launch/image_proc.launch"/>
+
+      <node name="PC_write_PLC" pkg="amr_driver" type="PC_WRITE_PLC.py" 
+            respawn="true" output="screen" ns="$(arg namespace)">
+            <rosparam command="load" file="$(find amr_driver)/config/pc_write_plc_params.yaml"/>
+      </node>
+
+      <node name="PC_read_PLC" pkg="amr_driver" type="PC_READ_PLC.py" 
+            respawn="true" output="screen" ns="$(arg namespace)">
+           <rosparam command="load" file="$(find amr_driver)/config/pc_read_plc_params.yaml"/> 
+      </node>
+
+      <node name="auto_navigation" pkg="amr_driver" type="auto_navigation.py" 
+            respawn="true" output="screen" ns="$(arg namespace)"/>
+
+      <node name="pose_estimation" pkg="amr_driver" type="pose_estimation.py" 
+            respawn="true" output="screen" ns="$(arg namespace)"/>
+
+      <node name="controller" pkg="amr_driver" type="controller.py" 
+            respawn="true" output="screen" ns="$(arg namespace)"/>
+
+      <node name="safety_controller" pkg="amr_driver" type="safety_controller.py" 
+            respawn="true" output="screen" ns="$(arg namespace)">
+            <param name="max_speed" type="double" value="0.5"/>
+            <param name="speed_after_protected_stop" type="double" value="0.2"/>
+            <param name="speed_warning_zone_lv1" type="double" value="0.3"/>
+            <param name="speed_warning_zone_lv2" type="double" value="0.4"/>
+      </node>
+
+      <node name="front_scanner_safety_status" pkg="amr_driver" type="front_safety_status.py" 
+            respawn="true" output="screen" ns="$(arg namespace)"/>
+
+      <node name="back_scanner_safety_status" pkg="amr_driver" type="back_safety_status.py" 
+            respawn="true" output="screen" ns="$(arg namespace)"/>
+
+      <node name="ultrasonic_safety" pkg="amr_driver" type="ultrasonic_safety_status.py" 
+            respawn="true" output="screen" ns="$(arg namespace)"/>
+
+      <node name="safety_zone_type" pkg="amr_driver" type="safety_zone_type.py" 
+            respawn="true" output="screen" ns="$(arg namespace)"/>
+
+      <node name="speed_filter" pkg="amr_driver" type="speed_filter.py" 
+            respawn="true" output="screen">
+            <param name="max_speed" type="double" value="0.5"/>
+      </node>
+</launch>

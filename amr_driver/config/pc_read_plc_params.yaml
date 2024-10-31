@@ -1,0 +1,8 @@
+PLC_port: 8001
+PLC_IP_address: '192.168.0.250'
+pub_frequency: 10
+left_ultrasonic_frame: left_ultrasonic_link
+right_ultrasonic_frame: right_ultrasonic_link
+min_range: 0.065
+max_range: 0.35
+field_of_view: 0.05236

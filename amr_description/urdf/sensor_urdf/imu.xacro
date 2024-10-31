@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <link name = 'imu_link'>
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <geometry>
+                <mesh filename="package://amr_description/meshes/sensor/imu_link.STL" />
+            </geometry>
+            <material name = 'black'/>
+        </visual>
+
+        <collision>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+            <geometry>
+                <mesh filename="package://amr_description/meshes/sensor/imu_link.STL" />
+            </geometry>
+        </collision>
+
+        <xacro:inertial_box mass="0.1" x="0.036048" y="0.024576 " z="0.011125">
+            <origin xyz="0 0.0 0.0" rpy="0 0 0" />
+        </xacro:inertial_box>
+    </link>
+
+    <joint name = 'imu_joint' type = 'fixed'>
+        <parent link = 'base_link'/>
+        <child link = 'imu_link'/>
+        <origin xyz="-0.038 0.0 0.1675" rpy="0 0 0" />
+    </joint>
+
+    <gazebo reference="imu_link"> 
+        <material>Gazebo/White</material>
+        <gravity>true</gravity>
+        <sensor name="imu_sensor" type="imu">
+            <always_on>true</always_on>
+            <update_rate>100</update_rate>  <!-- this is not the publish rate -->
+            <visualize>true</visualize>
+            <topic>__default_topic__</topic>
+            <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
+                <topicName>/imu/data</topicName>
+                <bodyName>imu_link</bodyName>
+                <updateRateHZ>50.0</updateRateHZ>  <!-- this is the publish rate -->
+                <gaussianNoise>0.00017</gaussianNoise>
+                <xyzOffset>0 0 0</xyzOffset>
+                <rpyOffset>0 0 0</rpyOffset>
+                <frameName>imu_link</frameName>  <!-- from real AGV_vdm -->
+            </plugin>
+            <pose>0 0 0 0 0 0</pose>
+        </sensor>
+    </gazebo>
+
+</robot>

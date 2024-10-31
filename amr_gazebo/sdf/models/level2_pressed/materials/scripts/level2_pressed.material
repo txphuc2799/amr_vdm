@@ -1,0 +1,13 @@
+material Level2_pressed/Picture
+{
+  technique
+  {
+    pass
+    {
+      texture_unit
+      {
+        texture level2_pressed.png
+      }
+    }
+  }
+}

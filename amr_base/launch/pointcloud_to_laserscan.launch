@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <arg name="camera" default="/front_camera" />
+
+    <!-- push pointcloud_to_laserscan nodelet into sensor's nodelet manager-->  
+    <node pkg="nodelet" type="nodelet" name="pointcloud_to_laserscan" args="standalone pointcloud_to_laserscan/pointcloud_to_laserscan_nodelet">
+    <!-- <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan"> -->
+        <remap from="cloud_in" to="$(arg camera)/depth/color/points"/>
+        <remap from="scan" to="$(arg camera)/scan"/>
+        
+        <param name="target_frame" value="front_camera_depth_frame"/>
+        <param name="transform_tolerance" value="0.01"/>
+        <param name="min_height" value="-0.2"/>
+        <param name="max_height" value="2.0"/>
+        <param name="angle_min" value="-1.5708"/>
+        <param name="angle_max" value="1.5708"/>
+        <param name="angle_increment" value="1/360"/>
+        <param name="scan_time" value="0.3333"/>
+        <param name="range_min" value="0.3"/>
+        <param name="range_max" value="3.0"/>
+        <param name="use_inf" value="true"/>
+        <!-- <param name="inf_epsilon" value="1.0"/> -->
+
+            <!-- # Concurrency level, affects number of pointclouds queued for processing, thread number governed by nodelet manager
+            # 0 : Detect number of cores
+            # 1 : Single threaded
+            # 2->inf : Parallelism level -->
+        <param name="concurrency_level" value="2"/>
+    </node>
+
+</launch>

@@ -1,0 +1,35 @@
+<launch>
+    <arg name="namespace" default="amr"/>
+
+    <!-- Laser line extraction -->
+    <include file="$(find amr_autodocking)/launch/line_extraction.launch"/>
+
+    <!-- Laser filter -->
+    <include file="$(find amr_autodocking)/launch/polygon_scan_filter.launch"/>
+
+    <!-- Apriltag detection -->
+    <include file="$(find amr_autodocking)/launch/apriltag_detection.launch"/>
+
+    <node name="auto_dock_node" pkg="amr_autodocking" type="autodock_controller.py" 
+          ns="$(arg namespace)" output="screen">
+          <remap from="/amr/back_scan_rep177" to="/back_scan_rep117"/>
+          <rosparam command="load" file="$(find amr_autodocking)/config/autodock_params.yaml"/>
+    </node>
+    
+    <node name="find_first_tf" pkg="amr_autodocking" type="find_first_tf.py" output="screen">
+        <rosparam command="load" file="$(find amr_autodocking)/scripts/find_dock_tf/params/find_first_tf_params.yaml"/>
+    </node>
+
+    <node name="find_last_tf" pkg="amr_autodocking" type="find_last_tf.py" output="screen">
+        <rosparam command="load" file="$(find amr_autodocking)/scripts/find_dock_tf/params/find_last_tf_params.yaml"/>
+    </node>
+
+    <node name="find_parallel_tf" pkg="amr_autodocking" type="find_parallel_tf.py" output="screen">
+        <rosparam command="load" file="$(find amr_autodocking)/scripts/find_dock_tf/params/find_parallel_tf_params.yaml"/>
+    </node>
+
+    <node name="find_charger_tf" pkg="amr_autodocking" type="pattern_dock" output="screen">
+        <rosparam command="load" file="$(find amr_autodocking)/src/params/charger_frame.yaml"/>
+    </node>
+      
+</launch>

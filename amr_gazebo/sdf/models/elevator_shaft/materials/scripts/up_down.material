@@ -1,0 +1,13 @@
+material Up_down/Diffuse
+{
+  technique
+  {
+    pass
+    {
+      texture_unit
+      {
+        texture up_down.jpg
+      }
+    }
+  }
+}

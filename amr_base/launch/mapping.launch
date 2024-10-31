@@ -1,0 +1,103 @@
+<launch>
+    <arg name="namespace"        default="amr" />
+    <arg name="planner_name"     default="navfn"/>
+    <arg name="controller_name"  default="rs"/>
+    <arg name="use_virtual_wall" default="false"/>
+
+    <!--laser_frame_ID:-->
+    <arg name="laser_back_frame_id"  default="back_laser_link" />
+    <arg name="laser_front_frame_id" default="front_laser_link" />
+    <arg name="angle_start_front"    default="-1.745329252" />
+    <arg name="angle_end_front"      default="1.745329252" />
+    <arg name="angle_start_back"     default="-2.181661565" />
+    <arg name="angle_end_back"       default="2.181661565" />
+
+    <!-- Load URDF -->
+    <param name="amr/robot_description" command="$(find xacro)/xacro --inorder $(find amr_description)/urdf/amr.urdf.xacro" />
+
+    <!-- Run the amr_base -->
+    <!-- This will create the amr_base hardware interface and instantiate a new controller manager with it -->
+    <node name="amr_base" pkg="amr_base" type="amr_base" ns="$(arg namespace)" output="screen"/>
+
+    <!-- Load ros_control controller configurations -->
+    <rosparam file="$(find amr_base)/config/controller/joint_state_controller.yaml"    ns="$(arg namespace)" command="load" />
+    <rosparam file="$(find amr_base)/config/controller/joint_position_controller.yaml" ns="$(arg namespace)" command="load" />
+    <rosparam file="$(find amr_base)/config/controller/diffdrive_controller.yaml"      ns="$(arg namespace)" command="load" />
+    <rosparam file="$(find amr_base)/config/base.yaml"                                 ns="$(arg namespace)" command="load" />
+
+    <!-- LOAD the controllers -->
+    <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" 
+        output="screen" ns="$(arg namespace)" args="joint_state_controller 
+                                                    joint_position_controller 
+                                                    mobile_base_controller"/>
+
+    <!-- EKF -->
+    <node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization_node" clear_params="true" output="screen" ns="$(arg namespace)">
+        <rosparam command="load" file="$(find amr_base)/config/ekf.yaml" subst_value="true" />
+    </node>
+
+    <!-- Add passive + mimic joints to joint_states topic -->
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" ns="$(arg namespace)">
+        <rosparam param="source_list">[joint_states]</rosparam>
+        <param name="rate" value="200.0" />
+    </node>
+
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"
+        output="screen" ns ="$(arg namespace)"/>
+
+    <!-- LAUNCH GMAPPING NODE -->
+    <include file="$(find amr_mapping)/launch/slam_gmapping.launch" />
+
+    <!--=== LAUNCH OTHER NODES ===-->
+
+    <!-- BACK & FRONT SICK SAFETY SCANNERS -->
+    <include file="$(find amr_base)/launch/sick_safetyscanners_front.launch">
+        <arg name="frame_id"    value="$(arg laser_front_frame_id)" />
+        <arg name="angle_start" value="$(arg angle_start_front)" />
+        <arg name="angle_end"   value="$(arg angle_end_front)" />
+    </include>
+
+    <include file="$(find amr_base)/launch/sick_safetyscanners_back.launch">
+        <arg name="frame_id"    value="$(arg laser_back_frame_id)" />
+        <arg name="angle_start" value="$(arg angle_start_back)" />
+        <arg name="angle_end"   value="$(arg angle_end_back)" />
+    </include>
+
+    <node name="back_rep117_laser_filter" pkg="amr_driver" type="rep117_filter.py" output="screen">
+        <remap from="scan" to="/amr/back_scan"/>
+        <remap from="scan_filtered" to="back_scan_rep117"/>
+    </node>
+
+    <node name="front_rep117_laser_filter" pkg="amr_driver" type="rep117_filter.py" output="screen">
+        <remap from="scan" to="/amr/front_scan"/>
+        <remap from="scan_filtered" to="front_scan_rep117"/>
+    </node>
+
+    <!-- IMU & IMU FILTER -->
+    <include file="$(find amr_base)/launch/microstrain.launch">
+        <arg name="params_file" value="/home/amr/catkin_ws/src/amr_vdm/amr_base/config/imu_params.yml" />
+    </include>
+
+    <include file="$(find imu_filter_madgwick)/launch/imu_filter_madgwick.launch"/>
+
+    <node name="PC_write_PLC" pkg="amr_driver" type="PC_WRITE_PLC.py" 
+        respawn="true" output="screen" ns="$(arg namespace)">
+        <rosparam command="load" file="$(find amr_driver)/config/pc_write_plc_params.yaml"/>
+    </node>
+
+    <node name="PC_read_PLC" pkg="amr_driver" type="PC_READ_PLC.py" 
+        respawn="true" output="screen" ns="$(arg namespace)">
+        <rosparam command="load" file="$(find amr_driver)/config/pc_read_plc_params.yaml"/> 
+    </node>
+
+    <!-- Launch Move base -->
+    <!-- <include file="$(find amr_navigation)/launch/move_base.xml">
+      <arg name="planner_name" value="$(arg planner_name)"/>
+      <arg name="controller_name" value="$(arg controller_name)"/>
+      <arg name="use_virtual_wall" value="$(arg use_virtual_wall)" />
+    </include> -->
+
+    <!-- Launch smoother velocity -->
+    <!-- <include file="$(find amr_navigation)/launch/velocity_smoother.launch"/> -->
+
+</launch>

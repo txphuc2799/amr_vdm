@@ -1,0 +1,13 @@
+material Buttons_panel/Picture
+{
+  technique
+  {
+    pass
+    {
+      texture_unit
+      {
+        texture inner_panel.png
+      }
+    }
+  }
+}

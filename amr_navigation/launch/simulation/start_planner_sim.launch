@@ -1,0 +1,22 @@
+<launch>
+    <arg name="controller"             default="dwa"/>
+    <arg name="planner"                default="navfn"/>
+    <arg name="map_file"               default="$(find amr_gazebo)/maps/simulation/test.yaml"/>
+    <arg name="virtual_walls_map_file" default="$(find amr_gazebo)/maps/maze_virtual_walls.yaml"/>
+    <arg name="with_virtual_walls"     default="false" />
+  
+    <include file="$(find amr_navigation)/launch/simulation/start_map_sim.launch">
+      <arg name="map_file"               value="$(arg map_file)" />
+      <arg name="virtual_walls_map_file" value="$(arg virtual_walls_map_file)" />
+      <arg name="with_virtual_walls"     value="$(arg with_virtual_walls)" />
+    </include>
+
+    <include file="$(find amr_navigation)/launch/simulation/move_base_sim.launch">
+      <arg name="controller" value="$(arg controller)"/>
+      <arg name="planner"    value="$(arg planner)"/>
+    </include>
+
+    <include file="$(find amr_navigation)/launch/simulation/amcl_sim.launch"/>
+
+</launch>
+  

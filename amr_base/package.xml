@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>amr_base</name>
+  <version>0.0.0</version>
+  <description>The amr_base package</description>
+
+  <maintainer email="phuc@todo.todo">phuc</maintainer>
+
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>amr_msgs</build_depend>
+  <build_depend>control_toolbox</build_depend>
+  <build_depend>controller_manager</build_depend>
+  <build_depend>diagnostic_updater</build_depend>
+  <build_depend>diff_drive_controller</build_depend>
+  <build_depend>dynamic_reconfigure</build_depend>
+  <build_depend>hardware_interface</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>rosparam_shortcuts</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>urdf</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>microstrain-inertial-driver</build_depend>
+  <build_depend>microstrain-inertial-rqt</build_depend>
+
+  <build_export_depend>amr_msgs</build_export_depend>
+  <build_export_depend>control_toolbox</build_export_depend>
+  <build_export_depend>controller_manager</build_export_depend>
+  <build_export_depend>diagnostic_updater</build_export_depend>
+  <build_export_depend>diff_drive_controller</build_export_depend>
+  <build_export_depend>dynamic_reconfigure</build_export_depend>
+  <build_export_depend>hardware_interface</build_export_depend>
+  <build_export_depend>roscpp</build_export_depend>
+  <build_export_depend>rosparam_shortcuts</build_export_depend>
+  <build_export_depend>sensor_msgs</build_export_depend>
+  <build_export_depend>urdf</build_export_depend>
+  <build_export_depend>microstrain-inertial-driver</build_export_depend>
+  <build_export_depend>microstrain-inertial-rqt</build_export_depend>
+
+  <exec_depend>amr_msgs</exec_depend>
+  <exec_depend>control_toolbox</exec_depend>
+  <exec_depend>controller_manager</exec_depend>
+  <exec_depend>diagnostic_updater</exec_depend>
+  <exec_depend>diff_drive_controller</exec_depend>
+  <exec_depend>dynamic_reconfigure</exec_depend>
+  <exec_depend>hardware_interface</exec_depend>
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>rosparam_shortcuts</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>urdf</exec_depend>
+  <exec_depend>message_runtime</exec_depend>
+  <exec_depend>microstrain-inertial-driver</exec_depend>
+  <exec_depend>microstrain-inertial-rqt</exec_depend>
+
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <!-- Other tools can request additional information be placed here -->
+
+  </export>
+</package>

@@ -1,0 +1,13 @@
+material Button_panel_pressed/Picture
+{
+  technique
+  {
+    pass
+    {
+      texture_unit
+      {
+        texture button_panel_pressed.jpg
+      }
+    }
+  }
+}

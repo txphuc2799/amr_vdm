@@ -1,0 +1,56 @@
+<?xml version="1.0" ?>
+<launch>
+    <!-- Spawn Dock frame in Gazebo -->
+    <!-- <param name="docker_description" command="cat '$(find amr_description)/urdf/include/docker.urdf'" />
+    
+    <arg name="dock_x" default="0.0"/>
+    <arg name="dock_y" default="0.0"/>
+    <arg name="dock_z" default="0.0"/>
+    <arg name="dock_roll" default="0.0"/>
+    <arg name="dock_pitch" default="0.0"/>
+    <arg name="dock_yaw" default="0.0"/>
+    
+    <node name="Docker_spawner" 
+          pkg="gazebo_ros" 
+          type="spawn_model" 
+          output="screen"
+          args="-urdf -param docker_description -model Docker 
+                -x $(arg dock_x) -y $(arg dock_y) -z $(arg dock_z) 
+                -R $(arg dock_roll) -P $(arg dock_pitch) -Y $(arg dock_yaw)"/> -->
+
+    <!-- V shape dock -->
+    <!-- <param name="docker_description1" command="cat '$(find amr_description)/urdf/include/v_dock.urdf'" />
+
+    <arg name="dock_x1" default="0"/>
+    <arg name="dock_y1" default="0"/>
+    <arg name="dock_z1" default="0"/>
+    <arg name="dock_roll1" default="0"/>
+    <arg name="dock_pitch1" default="0"/>
+    <arg name="dock_yaw1" default="0"/>
+    
+    <node name="Docker_spawner1" 
+          pkg="gazebo_ros" 
+          type="spawn_model" 
+          output="screen"
+          args="-urdf -param docker_description1 -model Docker1 
+                  -x $(arg dock_x1) -y $(arg dock_y1) -z $(arg dock_z1) 
+                  -R $(arg dock_roll1) -P $(arg dock_pitch1) -Y $(arg dock_yaw1)"/> -->
+
+    <!-- Spawn Apritag in Gazebo -->
+    <param name="apriltag_description" command="cat '$(find amr_description)/urdf/gazebo_urdf/spawn_model.urdf'" />
+    
+    <arg name="tag_x" default="1.0"/>
+    <arg name="tag_y" default="0.0"/>
+    <arg name="tag_z" default="0"/>
+    <arg name="tag_roll" default="0"/>
+    <arg name="tag_pitch" default="0"/>
+    <arg name="tag_yaw" default="3.14"/>
+    
+    <node name="Apriltag_spawner" 
+          pkg="gazebo_ros" 
+          type="spawn_model" 
+          output="screen"
+          args="-urdf -param apriltag_description -model Apriltag 
+                -x $(arg tag_x) -y $(arg tag_y) -z $(arg tag_z) 
+                -R $(arg tag_roll) -P $(arg tag_pitch) -Y $(arg tag_yaw)"/> 
+</launch>

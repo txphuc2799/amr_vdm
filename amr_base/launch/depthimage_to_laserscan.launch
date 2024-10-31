@@ -1,0 +1,21 @@
+<launch>
+
+    <arg name="front_camera_name" default="/front_camera"/>
+    <arg name="depth_image" default="$(arg front_camera_name)/depth/image_rect_raw"/>
+    <arg name="scan" default="$(arg front_camera_name)/scan"/>
+    
+    <node pkg="nodelet" type="nodelet" name="full_depthimage_to_laserscan"
+          args="standalone full_depthimage_to_laserscan/DepthImageToLaserScanNodelet"  output="screen" required="true">
+      <param name="scan_height" value="500"/>
+      <param name="scan_time" value="1/30"/>
+      <param name="output_frame_id" value="front_camera_depth_frame"/>
+      <param name="range_min" value="0.3"/>
+      <param name="range_max" value="3.0"/>
+      <remap from="image" to="$(arg depth_image)"/>
+      <remap from="camera_info" to="$(arg front_camera_name)/camera_info"/>
+      <remap from="scan" to="$(arg scan)"/>
+      <param name="floor_dist" value=".1"/>
+      <param name="overhead_dist" value=".5"/>
+    </node>
+  
+</launch>

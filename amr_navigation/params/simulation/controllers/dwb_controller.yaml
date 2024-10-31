@@ -1,0 +1,54 @@
+base_local_planner: dwb_controller/DWBController
+DWBController:
+  debug_trajectory_details: True
+  min_vel_x: 0.0
+  min_vel_y: 0.0
+  max_vel_x: 0.6
+  max_vel_y: 0.0
+  max_vel_theta: 1.0
+  min_speed_xy: 0.0
+  max_speed_xy: 0.6
+  min_speed_theta: 0.0
+  acc_lim_x: 2.5
+  acc_lim_y: 0.0
+  acc_lim_theta: 3.2
+  decel_lim_x: -2.5
+  decel_lim_y: 0.0
+  decel_lim_theta: -3.2
+  vx_samples: 20
+  vy_samples: 5
+  vtheta_samples: 20
+  sim_time: 1.7
+  linear_granularity: 0.05
+  angular_granularity: 0.025
+  transform_tolerance: 0.2
+  trans_stopped_velocity: 0.25
+  short_circuit_trajectory_evaluation: True
+  limit_vel_cmd_in_traj: False
+  stateful: True
+  goal_angular_vel_scaling_angle: 30.0
+  goal_angle_scaling_factor: 0.7
+  rotate_to_goal_max_angular_vel: 0.4
+  rotate_to_goal_min_angular_vel: 0.05
+  xy_goal_tolerance: 0.05
+  yaw_tolerance: 0.02
+  critics: ["Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
+  ObstacleFootprint:
+    scale: 0.08    #0.2       # default: 0.01  mir: 0.01  - weighting for how much the controller should avoid obstacles
+    max_scaling_factor: 0.2 # default: 0.2   mir: 0.2   - how much to scale the robot's footprint when at speed.
+    scaling_speed: 0.25     # default: 0.25  mir: 0.25  - absolute velocity at which to start scaling the robot's footprint
+    sum_scores: false       # if true, return sum of scores of all trajectory points instead of only last one
+  BaseObstacle:
+    scale: 0.02
+  PathAlign:
+    scale: 32.0
+  GoalAlign:
+    scale: 24.0
+  PathAlign:
+    forward_point_distance: 0.5
+  GoalAlign:
+    forward_point_distance: 0.5
+  PathDist:
+    scale: 32.0
+  GoalDist:
+    scale: 24.0

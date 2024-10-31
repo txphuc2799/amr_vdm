@@ -1,0 +1,69 @@
+base_local_planner: dwb_controller/DWBController
+DWBController:
+  odom_topic: /amr/odometry/filtered
+  debug_trajectory_details: True
+  min_vel_x: 0.0
+  min_vel_y: 0.0
+  max_vel_x: 0.7
+  max_vel_y: 0.0
+  max_vel_theta: 0.7
+  min_speed_xy: 0.0
+  max_speed_xy: 0.7
+  min_speed_theta: 0.0
+  acc_lim_x: 1.5
+  acc_lim_y: 0.0
+  acc_lim_theta: 1.5
+  decel_lim_x: -1.5
+  decel_lim_y: 0.0
+  decel_lim_theta: -1.5
+  vx_samples: 20
+  vy_samples: 1
+  vtheta_samples: 20
+  sim_time: 1.7
+  linear_granularity: 0.05
+  angular_granularity: 0.025
+  transform_tolerance: 0.2
+  short_circuit_trajectory_evaluation: True
+  limit_vel_cmd_in_traj: False
+  stateful: True
+  GoalChecker:
+    controller_frequency: 20.0
+    goal_angular_vel_scaling_angle: 15.0
+    goal_angle_scaling_factor: 0.8
+    rotate_to_goal_max_angular_vel: 0.4
+    rotate_to_goal_min_angular_vel: 0.1
+    xy_goal_tolerance: 0.05
+    yaw_tolerance: 0.02
+  critics: ["Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "PathProgress", "GoalDist"]
+  Oscillation:
+    oscillation_time_threshold: 3.0
+    oscillation_distance: 0.1
+    x_only_threshold: 0.05
+  ObstacleFootprint:
+    scale: 0.02
+  PathAlign:
+    scale: 32.0
+    forward_point_distance: 0.325
+  PathDist:
+    scale: 32.0
+  PathProgress:
+    scale: 24.0
+    heading_scale: 0.1
+    xy_local_goal_tolerance: 0.15
+    angle_threshold: 0.2  # 45 degrees
+  GoalAlign:
+    scale: 24.0
+    forward_point_distance: 0.325
+  GoalDist:
+    scale: 24.0
+
+  prune_plan: true
+  prune_distance: 2.0 
+  
+  publish_evaluation: false
+  publish_global_plan: false
+  publish_transformed_plan: false
+  publish_local_plan: true
+  publish_trajectories: false
+  publish_cost_grid_pc: false
+  marker_lifetime: 0.5

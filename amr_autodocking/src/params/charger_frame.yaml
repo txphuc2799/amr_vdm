@@ -1,0 +1,12 @@
+patterm_length_a: 0.15
+patterm_length_b: 0.15
+pattern_angle_ab: 3.84
+pattern_angle_bc: 1.745
+pattern_angle_cd: 3.84
+distance_tolerance: 0.1
+length_tolerance: 0.1
+angle_tolerance: 0.15
+angle_threshold: 0.5
+laser_frame_id: front_laser_link
+dock_frame_id: charger_frame
+debug: false

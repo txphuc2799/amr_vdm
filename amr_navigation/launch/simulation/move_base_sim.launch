@@ -1,0 +1,22 @@
+<launch>
+    <arg name="controller"         default="dwb"/>
+    <arg name="planner"            default="navfn"/>
+
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen" clear_params="true">
+        <rosparam file="$(find amr_navigation)/params/simulation/move_base.yaml" command="load" />
+        <rosparam file="$(find amr_navigation)/params/simulation/controllers/$(arg controller)_controller.yaml" command="load" />
+        <rosparam file="$(find amr_navigation)/params/simulation/planners/$(arg planner)_planner.yaml" command="load"/>
+
+        <!-- Load global costmap params -->
+        <rosparam file="$(find amr_navigation)/params/simulation/costmaps/common_costmap.yaml" command="load" ns="global_costmap" subst_value="true" />
+        <rosparam file="$(find amr_navigation)/params/simulation/costmaps/global_costmap.yaml" command="load" />
+        
+        <!-- Load local costmap params -->
+        <rosparam file="$(find amr_navigation)/params/simulation/costmaps/common_costmap.yaml" command="load" ns="local_costmap" subst_value="true" />
+        <rosparam file="$(find amr_navigation)/params/simulation/costmaps/local_costmap.yaml"  command="load" />
+
+        <remap from="map"     to="/map"/>
+        <remap from="cmd_vel" to="/diff_drive_controller/cmd_vel" />
+        <remap from="odom"    to="/diff_drive_controller/odom" />
+    </node>
+</launch>

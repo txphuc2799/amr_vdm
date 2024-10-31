@@ -1,0 +1,15 @@
+pattern_length_a: 0.09
+pattern_length_b: 0.55
+pattern_angle_ab: 4.7123
+pattern_angle_bc: 3.14159
+pattern_angle_cd: 4.7123
+pattern_angle_ad: 0.0
+pattern_distance_ad: 0.36
+pattern_distance_bc: 0.18
+distance_tolerance: 0.1
+length_tolerance: 0.1
+angle_tolerance: 0.15
+angle_threshold: 0.5
+laser_frame_id: back_laser_link
+dock_frame_id: cart_frame
+debug: false

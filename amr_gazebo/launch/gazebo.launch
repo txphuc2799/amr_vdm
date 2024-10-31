@@ -1,0 +1,69 @@
+<?xml version="1.0" ?>
+<launch>
+  <arg name="robot_x"    default="0.0" />
+  <arg name="robot_y"    default="0.0" />
+  <arg name="robot_yaw"  default="0.0" />
+  <arg name="gui"        default="true" />
+  <arg name="world_name" default="worlds/empty.world"/>
+  <arg name="model_name" default="amr" doc="Name of the Gazebo robot model (needs to be different for each robot)" />
+
+  <!-- Load URDF -->
+  <arg name="model" default="$(find amr_description)/urdf/amr_gazebo.urdf.xacro"/>
+  <param name="robot_description" command="$(find xacro)/xacro $(arg model)" />
+
+  <!-- Spawn the robot into Gazebo -->
+  <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param robot_description -urdf -model $(arg model_name)
+    -x $(arg robot_x) -y $(arg robot_y) -Y $(arg robot_yaw) " />
+  
+  <include file="$(find amr_gazebo)/launch/empty_world.launch">
+    <arg name="world_name" value="$(arg world_name)"/>
+    <arg name="paused" value="false" />
+    <arg name="gui" value="$(arg gui)" />
+  </include>
+
+  <!--=== Spwan world in gazebo ===-->
+  <include file="$(find amr_gazebo)/launch/spawn_world.launch.xml" />
+
+  <!-- <include file="$(find amr_gazebo)/launch/spawn_model.launch">
+    <arg name="tag_x" default="3.8"/>
+    <arg name="tag_y" default="-9.5"/>
+    <arg name="tag_z" default="0"/>
+    <arg name="tag_roll" default="0"/>
+    <arg name="tag_pitch" default="0"/>
+    <arg name="tag_yaw" default="1.57"/>
+  </include> -->
+
+  <!-- Load ros_control controller configurations -->
+  <rosparam file="$(find amr_gazebo)/config/joint_state_controller.yaml" command="load" />
+  <rosparam file="$(find amr_gazebo)/config/joint_position_controller.yaml" command="load" />
+  <rosparam file="$(find amr_gazebo)/config/diff_drive_controller.yaml" command="load" subst_value="true" />
+
+  <!-- Start the controllers -->
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" output="screen"
+    args="joint_state_controller joint_position_controller diff_drive_controller"/>
+
+  <!-- EKF -->
+  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization_node" clear_params="true" output="screen">
+    <rosparam command="load" file="$(find amr_gazebo)/config/ekf_gazebo.yaml" subst_value="true" />
+  </node>
+
+  <!-- Add passive + mimic joints to joint_states topic -->
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+    <rosparam param="source_list">[/amr/joint_states]</rosparam>
+    <param name="rate" value="200.0"/>
+  </node>
+
+  <!-- Robot state publisher -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen" />
+
+  <node name="back_rep117_laser_filter" pkg="amr_driver" type="rep117_filter.py" output="screen">
+    <remap from="scan" to="back_scan" />
+    <remap from="scan_filtered" to="back_scan_rep117" />
+  </node>
+
+  <node name="front_rep117_laser_filter" pkg="amr_driver" type="rep117_filter.py" output="screen">
+    <remap from="scan" to="front_scan" />
+    <remap from="scan_filtered" to="front_scan_rep117" />
+  </node>
+
+</launch>

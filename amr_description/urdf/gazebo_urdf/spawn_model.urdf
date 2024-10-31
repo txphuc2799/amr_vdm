@@ -1,0 +1,35 @@
+<robot name="apriltag">
+
+    <link name="apriltag_link">
+ 	    <inertial>
+            <origin xyz="-0.31 0 0.3" rpy="0 0 0"/>
+            <mass value="10.0" />
+            <inertia ixx="0.681" ixy="0.0" ixz="0.0" iyy="0.346" iyz="0.0" izz="0.495"/>
+        </inertial>
+
+        <!-- <xacro:inertial_box mass="10.0" x="0.31" y="0.706" z="0.565">
+            <origin xyz="0.0 0.0 0.0" rpy="0 0 0 "/>
+        </xacro:inertial_box> -->
+
+        <collision>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://amr_gazebo/sdf/apriltag_and_vl_docker/april_tag_10cm_and_vl_120.dae"/>
+            </geometry>
+        </collision>
+        <visual>
+            <origin rpy="0.0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="package://amr_gazebo/sdf/apriltag_and_vl_docker/april_tag_10cm_and_vl_120.dae"/>
+            </geometry>
+        </visual>
+    </link>
+    
+    <gazebo reference="apriltag_link">
+        <kp>100000.0</kp>
+        <kd>100000.0</kd>
+        <mu1>0.1</mu1>
+        <mu2>0.1</mu2>
+        <fdir1>1 0 0</fdir1>
+    </gazebo>
+</robot>

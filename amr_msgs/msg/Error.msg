@@ -1,0 +1,28 @@
+# Definition of offsets indicating what type an error is
+int32 HARDWARE_ERROR = 0
+int32 CPU_LOAD_ERROR = 100
+int32 MEMORY_ERROR = 200
+int32 ETHERNET_ERROR = 300
+int32 BATTERY_ERROR = 500
+int32 IMU_ERROR = 600
+int32 MOTOR_ERROR = 700
+int32 LASER_ERROR = 800
+int32 CAMERA_ERROR = 900
+int32 SAFETY_SYSTEM_ERROR = 1000
+int32 POWERSUPPLY_ERROR = 2100
+int32 CANBUS_ERROR = 2200
+int32 MISSING_ERROR = 9000
+int32 SOFTWARE_ERROR = 10000
+int32 MISSION_ERROR = 10100
+int32 LOCALIZATION_ERROR = 10200
+int32 MAPPING_ERROR = 10300
+int32 NAVIGATION_ERROR = 10400
+int32 DOCK_CHARGE_ERROR = 10500
+int32 DOCK_PICKUP_ERROR = 10600
+int32 DOCK_DROPOFF_ERROR = 10700
+int32 UNDOCK_ERROR = 10800
+
+#  Error information
+int32 code 			# Error code
+string description 	# Error description
+bool nolog          # Do not trigger an error log if set to true

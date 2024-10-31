@@ -1,0 +1,51 @@
+# Hardware related parameters
+# will be loaded onto the parameter server
+# See the agvbot.launch
+
+
+# Params for motor:
+MR_encoder_resolution: 8000      # Encoder resolution of motor MR-94BZB
+MS_enc_resolution: 42            # Encoder resolution of motor MS-94BZC
+gear_ratio: 10.33               
+gear_ratio_pinion: 0.84210526    
+pinion_gear_radius: 0.02         # Radius of pinion gear
+rack_pinion_gear_efficiency: 0.714
+gain: 1.0
+trim: 0.0
+motor_constant: 1.0 #27.0
+acc_lim_motor: 1000             
+acc_lim_motor_break: 8000
+current_lim_motor: 450
+current_lim_motor_break: 450
+slider_motor_origin_spd: 400     # Slider motor speed when go to origin (RPM)
+slider_motor_spd: 200             # Sldier motor speed (RPM)
+operating_mode: ['wheel','wheel','slider'] #Mode: 1-wheel, 2-joint, 3-slider, 4-unknown
+
+
+#------- Structure register PLC --------:
+bit_name: 'M' # Mitsu
+word_name: 'D'
+### REGISTER:
+reg_data_motor: [900, 903, 906]
+reg_data_motor_length: 3      # resgister length for one motor
+# reg_data_left_motor: 210      # register start for left motor
+# reg_data_right_motor: 212     # register start for right motor
+# reg_data_slider_motor: 214    # register start for slider motor
+reg_spd_cmd_motor: [800, 804, 808]
+reg_spd_cmd_length: 4           # resgister length for one motor
+# reg_spd_cmd_left_motor: 200   # register start for left motor
+# reg_spd_cmd_right_motor: 204  # register start for right motor
+# reg_spd_cmd_slider_motor: 208 # register start for slider motor
+
+### BIT: (1: ON, 0: OFF)
+bit_reset_motor: [171, 172, 173]
+bit_break_motor: [161, 162, 163]
+bit_slider_origin: [150,180]    # [0]: cmd bit, [1]: state bit
+
+# IP Address & IP Port PLC
+ip_address: '192.168.0.250'
+ip_port: 8000
+
+debug:
+  hardware_interface: false
+  base_controller: true

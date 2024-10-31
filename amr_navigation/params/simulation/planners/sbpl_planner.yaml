@@ -1,0 +1,10 @@
+base_global_planner: SBPLLatticePlanner
+SBPLLatticePlanner:
+  primitive_filename: /home/amr/catkin_ws/src/amr_vdm/amr_navigation/mprim/unicycle_highcost_5cm.mprim
+  environment_type: XYThetaLattice
+  planner_type: ARAPlanner
+  allocated_time: 1.0
+  initial_epsilon: 15.0
+  forward_search: false
+  nominalvel_mpersecs: 0.8
+  timetoturn45degsinplace_secs: 1.31 # = 0.6 rad/s

@@ -1,0 +1,39 @@
+<launch>
+  <arg name="robot_x"                default="-2.0" />
+  <arg name="robot_y"                default="0.0" />
+  <arg name="robot_yaw"              default="0.0" />
+  <arg name="use_sim"                default="false"/>
+  <arg name="rviz_file"              default="$(find amr_navigation)/rviz/navigation_sim.rviz"/>
+  <arg name="controller"             default="rs"/>
+  <arg name="planner"                default="thetas"/>
+  <arg name="map_file"               default="$(find amr_gazebo)/maps/simulation/test.yaml"/>
+  <arg name="virtual_walls_map_file" default="$(find amr_gazebo)/maps/maze_virtual_walls.yaml"/>
+  <arg name="with_virtual_walls"     default="false" />
+
+  <!-- spawn robot and bring up controllers etc. -->
+  <include file="$(find amr_gazebo)/launch/gazebo.launch">
+    <arg name="robot_x"   value="$(arg robot_x)" />
+    <arg name="robot_y"   value="$(arg robot_y)" />
+    <arg name="robot_yaw" value="$(arg robot_yaw)" />
+  </include>
+
+  <!-- Start Planner -->
+  <include file="$(find amr_navigation)/launch/simulation/start_planner_sim.launch">
+    <arg name="controller"             value="$(arg controller)"/>
+    <arg name="planner"                value="$(arg planner)"/>
+    <arg name="map_file"               value="$(arg map_file)" />
+    <arg name="virtual_walls_map_file" value="$(arg virtual_walls_map_file)" />
+    <arg name="with_virtual_walls"     value="$(arg with_virtual_walls)" />
+  </include>
+
+  <!-- Auto docking Controller -->
+  <!-- <include file="$(find amr_autodocking)/launch/simulation/autodocking_sim.launch">
+    <arg name="use_sim" value="$(arg use_sim)"/>
+  </include> -->
+
+  <!-- Rviz -->
+  <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg rviz_file)">
+    <!-- <remap from="/move_base_simple/goal" to="amr_goal"/> -->
+  </node>
+  
+</launch>
