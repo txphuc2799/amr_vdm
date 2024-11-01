@@ -17,7 +17,7 @@
       <param name="frame_id" type="string" value="map"/>
   </node>
 
-  <node name="disable_obstacle_map" pkg="map_server" type="map_server" args="$(arg speed_filter_map_path)" ns="/disable_obstacle" output="screen">
+  <node name="disable_obstacle_map" pkg="map_server" type="map_server" args="$(arg disable_obstacle_map_path)" ns="/disable_obstacle" output="screen">
       <param name="frame_id" type="string" value="map"/>
   </node>
 
