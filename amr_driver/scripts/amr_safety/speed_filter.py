@@ -45,13 +45,13 @@ class SpeedFilter():
     def run(self):
         while not rospy.is_shutdown():
             if self.is_running_:
-                if (self.speed_at_field_ > 0.95
-                    and self.speed_limit_ > 0.95):
-                    speed_limit_per = 1.0    
-                elif self.speed_at_field_ <= self.speed_limit_:
-                    speed_limit_per = self.speed_at_field_
-                elif self.speed_at_field_ > self.speed_limit_:
-                    speed_limit_per = self.speed_limit_
+                if (self.speed_at_field_ <= 0.95 or self.speed_limit_ <= 0.95):    
+                    if self.speed_at_field_ <= self.speed_limit_:
+                        speed_limit_per = self.speed_at_field_
+                    else:
+                        speed_limit_per = self.speed_limit_
+                else:
+                    speed_limit_per = 1.0
                 
                 self.current_speed_limit_ = speed_limit_per
 

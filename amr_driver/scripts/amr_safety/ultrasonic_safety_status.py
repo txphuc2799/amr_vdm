@@ -18,7 +18,7 @@ class UltrasonicSafety():
 
         # Variables:
         self.is_running_ = False
-        self.is_turn_off_ultrasonic_safety_ = False
+        self.turn_off_ultrasonic_safety_ = False
         self.left_ultrasonic_range_ = 0.0
         self.right_ultrasonic_range_ = 0.0
         self.obstacle_state_ = SafetyStatus.NORMAL
@@ -37,7 +37,7 @@ class UltrasonicSafety():
     
 
     def turn_off_ultrasonic_safety_callback(self, msg:Bool):
-        self.is_turn_off_ultrasonic_safety_ = msg.data
+        self.turn_off_ultrasonic_safety_ = msg.data
 
     def runonce_callback(self, msg:Bool):
         self.is_running_ = msg.data
@@ -54,7 +54,7 @@ class UltrasonicSafety():
     def run(self):
         while not rospy.is_shutdown():
             if (not self.is_running_ or
-                self.is_turn_off_ultrasonic_safety_):
+                self.turn_off_ultrasonic_safety_):
                 self.obstacle_state_ = SafetyStatus.NORMAL
             else:
                 if self.safety_zone_type == SafetyZone.SMALL_ZONE:
