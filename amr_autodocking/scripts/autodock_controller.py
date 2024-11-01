@@ -86,39 +86,49 @@ class AutoDockStateMachine(AutoDockServer):
                 state = self.robot_state.MODE_PICKUP
                 self.updateLineExtractionParams(0)
                 self.enableApriltag(True)
+                
+                # (TODO) - Sometimes tag is delayed in few miliseconds,
+                #        - so waiting for tag with counter.
+                wait_for_util_tag_appear = 0
+                while True:
+                    tag_detections = rospy.wait_for_message("/back_camera/tag_detections",
+                                                            AprilTagDetectionArray, timeout=1.0)
+                    if (tag_detections is not None):
+                        tags = tag_detections.detections
 
-                tag_detections = rospy.wait_for_message("/back_camera/tag_detections",
-                                                        AprilTagDetectionArray, timeout=1.0)
+                        min_distance = 100
+                        tag_name = ""
 
-                if (tag_detections is not None):
-                    tags = tag_detections.detections
+                        for tag in tags:
+                            bot2dock = self.get_tf(f"tag_frame_{tag.id[0]}")
+                            x, y, yaw = utils.get_2d_pose(bot2dock)
+                            distance = self.distance2D(x, y)
 
-                    min_distance = 100
-                    tag_name = ""
+                            if (distance < min_distance):
+                                tag_name = f"tag_frame_{tag.id[0]}"
+                                self.tag_frame = tag_name
+                                min_distance = distance
 
-                    for tag in tags:
-                        bot2dock = self.get_tf(f"tag_frame_{tag.id[0]}")
-                        x, y, yaw = utils.get_2d_pose(bot2dock)
-                        distance = self.distance2D(x, y)
-
-                        if (distance < min_distance):
-                            tag_name = f"tag_frame_{tag.id[0]}"
-                            self.tag_frame = tag_name
-                            min_distance = distance
-
-                if tag_name != "":
-                    self.tag_frame = tag_name
-                    if (self.get_tf(self.cfg.first_frame) is not None and
-                        self.checkLaserFrame(laser_tf_name=self.cfg.first_frame, tag_tf_name=tag_name)):
-                        self.first_name = self.cfg.first_frame
+                    if tag_name != "":
+                        self.tag_frame = tag_name
+                        if (self.get_tf(self.cfg.first_frame) is not None and
+                            self.checkLaserFrame(laser_tf_name=self.cfg.first_frame, tag_tf_name=tag_name)):
+                            self.first_name = self.cfg.first_frame
+                        else:
+                            self.first_name = tag_name
                     else:
-                        self.first_name = tag_name
-                elif tag_name == "" and self.get_tf(self.cfg.first_frame) is None:
-                    self.enableApriltag(False)
-                    self.enableLineDetector(False)
-                    return False
-                else:
-                    self.first_name = self.cfg.first_frame if self.get_tf(self.cfg.first_frame) is not None else tag_name
+                        if wait_for_util_tag_appear == 5:
+                            if self.get_tf(self.cfg.first_frame) is None:
+                                self.enableApriltag(False)
+                                self.enableLineDetector(False)
+                                return False
+                            else:
+                                self.first_name = self.cfg.first_frame
+                                break
+                        wait_for_util_tag_appear += 1
+                        rospy.sleep(0.5)
+                        continue
+                    break
             else:
                 state = self.robot_state.MODE_DROPOFF
                 self.first_name = self.cfg.parallel_frame
@@ -146,14 +156,17 @@ class AutoDockStateMachine(AutoDockServer):
                 return True
 
             # If Dock failed
-            self.setSpeed()
-            self.printOutError("Error!")
-            self.setState(DockState.ERROR, "Autodock failed!")
-
             if (self.dock_state == DockState.SLIDER_GO_IN or
                 self.dock_state == DockState.SLIDER_GO_OUT or
                 self.dock_state == DockState.GO_OUT_DOCK):
+                self.setSpeed()
+                self.printOutError("Error!")
+                self.setState(DockState.ERROR, "Autodock failed!")
                 break    
+
+            self.setSpeed()
+            self.printOutError("Error!")
+            self.setState(DockState.ERROR, "Autodock failed!")
 
             # check again if it failed because of canceled
             if self.checkCancel():
@@ -209,7 +222,7 @@ class AutoDockStateMachine(AutoDockServer):
                     check_pause = False
 
                 elif ((rospy.Time.now() - start_time).to_sec() >= timeout):
-                    rospy.logerr("AutodockController: Slider motor error: Exceed timeout 15s")
+                    rospy.logerr(f"AutodockController: Slider motor error: Exceed timeout {timeout}s")
                     return False
 
                 elif self.slider_sensor_state[sensor_order] == 1:
@@ -750,7 +763,7 @@ class AutoDockStateMachine(AutoDockServer):
         return True
 
 
-    def cmdSliderMotor(self, state, timeout=25.0) -> bool:
+    def cmdSliderMotor(self, state, timeout=30.0) -> bool:
         if (state == self.robot_state.MODE_PICKUP):
             self.setState(DockState.SLIDER_GO_OUT, "Running!")
             cmd_slider = 1
@@ -789,6 +802,12 @@ class AutoDockStateMachine(AutoDockServer):
 
         if not self.moveWithOdom(self.cfg.min_linear_vel,self.cfg.max_linear_vel, s):
             return False
+        if (self.dock_name == 7):
+            self.turnOffBackLaserSafety(False)
+            if (not self.rotateWithOdom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, -92*math.pi/180)
+                or not self.moveWithOdom(self.cfg.min_linear_vel, self.cfg.max_linear_vel, -0.5)
+                or not self.rotateWithOdom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, 92*math.pi/180)):
+                return False
         
         self.printOutSuccess("Completed!")
         return True 

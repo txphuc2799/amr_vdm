@@ -24,12 +24,7 @@
             respawn="true" output="screen" ns="$(arg namespace)"/>
 
       <node name="safety_controller" pkg="amr_driver" type="safety_controller.py" 
-            respawn="true" output="screen" ns="$(arg namespace)">
-            <param name="max_speed" type="double" value="0.5"/>
-            <param name="speed_after_protected_stop" type="double" value="0.2"/>
-            <param name="speed_warning_zone_lv1" type="double" value="0.3"/>
-            <param name="speed_warning_zone_lv2" type="double" value="0.4"/>
-      </node>
+            respawn="true" output="screen" ns="$(arg namespace)"/>
 
       <node name="front_scanner_safety_status" pkg="amr_driver" type="front_safety_status.py" 
             respawn="true" output="screen" ns="$(arg namespace)"/>
@@ -44,7 +39,7 @@
             respawn="true" output="screen" ns="$(arg namespace)"/>
 
       <node name="speed_filter" pkg="amr_driver" type="speed_filter.py" 
-            respawn="true" output="screen">
-            <param name="max_speed" type="double" value="0.5"/>
+            respawn="true" output="screen" ns="$(arg namespace)">
+            <param name="max_velocity" type="double" value="0.7"/>
       </node>
 </launch>

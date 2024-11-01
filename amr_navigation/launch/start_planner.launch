@@ -5,6 +5,7 @@
   <arg name="virtual_wall_file"         default="$(find amr_gazebo)/maps/tp2_map/virtual_wall_map/tp2_virtual_wall_map.yaml" doc="Path to a virtual walls map .yaml file (optional)." />
   <arg name="speed_filter_map_path"     default="$(find amr_gazebo)/maps/tp2_map/speed_filter/map.yaml"/>
   <arg name="disable_obstacle_map_path" default="$(find amr_gazebo)/maps/tp2_map/disable_obstacle/map.yaml"/> 
+  <arg name="safety_filter_map_path"    default="$(find binary_filter)/map/ware_house.yaml"/> 
   <arg name="open_rviz"                 default="false"/>
   <arg name="rviz_file"                 default="$(find amr_navigation)/rviz/navigation.rviz"/>
 
@@ -14,6 +15,7 @@
     <arg name="virtual_wall_file"         value="$(arg virtual_wall_file)" />
     <arg name="speed_filter_map_path"     value="$(arg speed_filter_map_path)" />
     <arg name="disable_obstacle_map_path" value="$(arg disable_obstacle_map_path)" />
+    <arg name="safety_filter_map_path"    value="$(arg safety_filter_map_path)" />
   </include>
 
   <!-- Launch move base -->

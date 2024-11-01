@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import rospy
 
-from std_msgs.msg import Bool, Int16, Int16MultiArray, Empty
+from std_msgs.msg import Bool, Int16, Empty
+from amr_v3_msgs.msg import SafetyZone
 from amr_driver.mcprotocol.type1e import Type1E
 
 class Parameter():
@@ -27,7 +28,7 @@ class PCWritePLC(Type1E):
         rospy.init_node("PC_write_PLC")
 
         self.params = Parameter()
-        self.initParams()
+        self.init_params()
 
         # Parameter of PLC brigde:
         self.PLC_IP_address = rospy.get_param("~IP_addres_PLC",'192.168.0.250')
@@ -40,15 +41,15 @@ class PCWritePLC(Type1E):
             rospy.logerr("PC_controller(WRITE): can't connect to PLC")
 
         # Only Subcriber:
-        rospy.Subscriber("status_protected_field",Bool,self.protectedFieldCB)
-        rospy.Subscriber("cmd_brake",Bool, self.brakeCb)
-        rospy.Subscriber("state_runonce_nav", Bool, self.runOnceStateCB)
-        rospy.Subscriber("is_intialpose", Bool, self.isInitialPoseCB)
-        rospy.Subscriber("safety_zone_type",Int16, self.safetyTurnZoneCB)
-        rospy.Subscriber("error_mode", Int16, self.errorModeCB)
-        rospy.Subscriber("cmd_slider", Int16, self.cmdSliderCB)
-        rospy.Subscriber("/back_camera/camera_finished", Bool, self.loadFinishedCB)
-        rospy.Subscriber("RESET_AMR", Empty, self.resetAMRCB)
+        rospy.Subscriber("status_protected_field",Bool,self.protected_field_callback)
+        rospy.Subscriber("cmd_brake",Bool, self.brake_callback)
+        rospy.Subscriber("state_runonce_nav", Bool, self.runonce_callback)
+        rospy.Subscriber("is_intialpose", Bool, self.is_initialpose_callback)
+        rospy.Subscriber("safety_zone_type", SafetyZone, self.safety_zone_callback)
+        rospy.Subscriber("error_mode", Int16, self.mode_error_callback)
+        rospy.Subscriber("cmd_slider", Int16, self.cmd_slider_callback)
+        rospy.Subscriber("/back_camera/camera_finished", Bool, self.finished_callback)
+        rospy.Subscriber("RESET_AMR", Empty, self.reset_callback)
 
         # Avariables:
         self.status_protected_field = False
@@ -57,7 +58,7 @@ class PCWritePLC(Type1E):
         self.mode_error = 0
 
 
-    def initParams(self):
+    def init_params(self):
         print(f"NODE: PCWritePLC")
         print("PARAMETERS")
 
@@ -70,13 +71,13 @@ class PCWritePLC(Type1E):
             setattr(self.params, param_name, param_val)
 
 
-    def loadFinishedCB(self, msg: Bool):
+    def finished_callback(self, msg: Bool):
         if msg.data:
             rospy.loginfo("PLCWrite: AMR is ready for running!")
             self.batchwrite_bitunits(self.params.load_finished_bit, [1])
 
 
-    def cmdSliderCB(self, msg: Int16):
+    def cmd_slider_callback(self, msg: Int16):
         self.slider_cmd = msg.data
         
         if self.slider_cmd == 1:
@@ -85,57 +86,51 @@ class PCWritePLC(Type1E):
             self.batchwrite_bitunits(self.params.go_in_silder_bit, [1])    # M150 - Slider go in
 
 
-    def protectedFieldCB(self, msg: Bool):
+    def protected_field_callback(self, msg: Bool):
         self.status_protected_field = msg.data
 
         if self.status_protected_field:
             self.batchwrite_bitunits(self.params.obstacle_detecting_bit, [1])  # M4
-            rospy.logwarn("PLCWrite: Detect obtacles in protected filed")
+            rospy.logwarn("PLCWrite: Detect obtacles in protected filed!")
         else:
             self.batchwrite_bitunits(self.params.obstacle_detecting_bit, [0])
 
 
-    def safetyTurnZoneCB(self, msg: Int16):
-        if msg.data == 1:
+    def safety_zone_callback(self, msg: SafetyZone):
+        if msg.zone == SafetyZone.SMALL_ZONE:
             self.batchwrite_bitunits(self.params.safety_zone_bit, [1,1])       # M28: Front - M29: Back
             rospy.loginfo("PLCWrite: Switched back and front safety zone to small zone!")
-
-        elif msg.data == 2:
-            self.batchwrite_bitunits(self.params.safety_zone_bit, [0,1])
-            rospy.loginfo("PLCWrite: Switched back safety zone to small zone and front safety zone to normal zone!")
-
         else:
             self.batchwrite_bitunits(self.params.safety_zone_bit, [0,0])
             rospy.loginfo("PLCWrite: Switched back and front safety zone to default zone!")
 
 
-    def isInitialPoseCB(self, msg: Bool):
+    def is_initialpose_callback(self, msg: Bool):
         if msg.data:
             self.batchwrite_bitunits(self.params.initialpose_bit, [0])          # M406
 
-
-    def brakeCb(self, msg: Bool):
+    def brake_callback(self, msg: Bool):
         self.brake_cmd = msg.data
 
         if self.brake_cmd:
             self.batchwrite_bitunits(self.params.brake_bit, [0,0])   # Brake off [M1-M2]
-            rospy.loginfo("PLCWrite: Brake State: ON")
+            rospy.loginfo("PLCWrite: Brake is ON.")
         else:
             self.batchwrite_bitunits(self.params.brake_bit, [1,1])   # Brake on
-            rospy.loginfo("PLCWrite: Brake State: OFF")
+            rospy.loginfo("PLCWrite: Brake is OFF.")
 
 
-    def runOnceStateCB(self, msg: Bool):
+    def runonce_callback(self, msg: Bool):
         if msg.data:
             self.batchwrite_bitunits(self.params.runonce_bit, [1])    # M8
         else:
             self.batchwrite_bitunits(self.params.runonce_bit, [0])
 
 
-    def errorModeCB(self, msg):
+    def mode_error_callback(self, msg):
         self.batchwrite_wordunits("D200", [msg.data])
 
-    def resetAMRCB(self, msg: Empty):
+    def reset_callback(self, msg: Empty):
         self.batchwrite_bitunits(self.params.reset_amr_bit, [0])
 
         

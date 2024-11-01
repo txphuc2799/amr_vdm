@@ -448,11 +448,11 @@ class AutoDockServer:
         msg = "disable" if not signal else "enable"
 
         try:
-            rospy.logwarn(f"AutoDockServer: Waiting {msg} apriltag detection from server...")
+            rospy.loginfo(f"AutoDockServer: Waiting {msg} apriltag detection from server...")
             result = self.apriltag_client.call(signal)
 
             if result.success:
-                rospy.logwarn("AutoDockServer: " + result.message)
+                rospy.loginfo("AutoDockServer: " + result.message)
                 return True
             else:
                 return False
@@ -525,7 +525,7 @@ class AutoDockServer:
         `signal = 2`: Slider go in
         """
         msg = "OUT" if signal == 1 else "IN"
-        rospy.logwarn(f"AutoDockServer: PUBLISHING SLIDER MOTOR GO {msg}!")
+        rospy.loginfo(f"AutoDockServer: PUBLISHING SLIDER MOTOR GO {msg}!")
 
         self.pub_cmd_slider.publish(signal)
     
@@ -561,7 +561,7 @@ class AutoDockServer:
             rospy.logerr(f"AutoDockServer: State: [{state_str}] | {printout}!")
         
         else:
-            rospy.logwarn(f"AutoDockServer: State: [{state_str}] | {printout}")
+            rospy.loginfo(f"AutoDockServer: State: [{state_str}] | {printout}")
 
         if self.run_server:
             self.feedback_msg.state = state
@@ -613,7 +613,7 @@ class AutoDockServer:
 
         # check if dock_timeout reaches
         if (rospy.Time.now() - self.start_time).secs > self.time_out_remain:
-            rospy.logwarn('Timeout reaches!')
+            rospy.logerr('Timeout reaches!')
             self.setState(self.dock_state, "AutoDockServer: Reach Timeout")
             return True
         return False
@@ -679,7 +679,7 @@ class AutoDockServer:
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException):
-            rospy.logwarn(f"AutoDockServer: Failed lookup: {target_link}, from {ref_link}")
+            rospy.logerr(f"AutoDockServer: Failed lookup: {target_link}, from {ref_link}")
             return None
         
     
@@ -749,7 +749,7 @@ class AutoDockServer:
         Move robot in linear motion with Odom. Blocking function
         :return : success
         """
-        self.setState(self.dock_state, f"AutoDockServer: move robot: {forward:.2f}m!")
+        self.setState(self.dock_state, f"Move robot: {forward:.2f}m!")
 
         _initial_tf = self.get_odom()
         if _initial_tf is None:
@@ -786,17 +786,15 @@ class AutoDockServer:
 
                 if abs(dx) < self.cfg.stop_trans_diff:
                     self.setSpeed()
-                    rospy.logwarn("AutoDockServer: Done with move robot")
+                    rospy.loginfo("AutoDockServer: Done with move robot")
                     return True
 
                 # This makes sure that the robot is actually moving linearly
                 time_now = rospy.Time.now()
                 dt = (time_now - prev_time).to_sec()
-                # print('-----------------------------------------')
                 l_vel_pid = _pid.update(forward, forward - dx, dt)
                 ang_vel = utils.sat_proportional_filter(dyaw, abs_max=self.cfg.min_angular_vel, factor=0.2)
                 l_vel   = utils.bin_filter(dx, l_vel_pid)
-                # print('l_vel_pid: ', l_vel_pid)
 
                 self.setSpeed(linear_vel=l_vel, angular_vel=ang_vel)
                 prev_time = time_now
@@ -811,7 +809,7 @@ class AutoDockServer:
         `rotate`: How many degrees for rotating
         `v_w`: angular velocity
         """
-        self.setState(self.dock_state, f"AutoDockServer: Turn robot: {rotate:.2f} rad!")
+        self.setState(self.dock_state, f"Turn robot: {rotate:.2f} rad!")
 
         _initial_tf = self.get_odom()
         if _initial_tf is None:
@@ -847,7 +845,7 @@ class AutoDockServer:
 
                 if abs(dyaw) < self.cfg.stop_yaw_diff:
                     self.setSpeed()
-                    rospy.logwarn("AutoDockServer: Done with rotate robot")
+                    rospy.loginfo("AutoDockServer: Done with rotate robot")
                     return True
                 
                 time_now = rospy.Time.now()

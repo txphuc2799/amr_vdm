@@ -24,6 +24,6 @@
         <remap from="cmd_vel" to ="/amr/mobile_base_controller/cmd_vel" />
         <remap from="marker"  to="move_base_node/DWBLocalPlanner/markers" />
         <remap from="odom"    to="/amr/mobile_base_controller/odom" /> <!---->
-        <!-- <remap from="/move_base_simple/goal" to="/mbs/goal"/> -->
+        <remap from="/move_base_simple/goal" to="/mbs/goal"/>
     </node>
 </launch>

@@ -1,7 +1,7 @@
 base_local_planner: rotation_shim_controller/RotationShimController
 RotationShimController:
-  # primary_controller: dwb_controller/DWBController
-  primary_controller: vector_pursuit_controller/VectorPursuitController
+  primary_controller: dwb_controller/DWBController
+  # primary_controller: vector_pursuit_controller/VectorPursuitController
   controller_frequency: 20.0
   transform_tolerance: 0.5
   simulate_ahead_time: 1.0

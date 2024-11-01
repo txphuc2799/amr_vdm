@@ -2,7 +2,8 @@
   <arg name="map_file"                  default="$(find amr_gazebo)/maps/test_map/test_map.yaml"/>
   <arg name="virtual_wall_file"         default="$(arg map_file)"/>
   <arg name="speed_filter_map_path"     default="$(find amr_gazebo)/maps/tp2_map/speed_filter/map.yaml"/>
-  <arg name="disable_obstacle_map_path" default="$(find amr_gazebo)/maps/tp2_map/disable_obstacle/map.yaml"/>  
+  <arg name="disable_obstacle_map_path" default="$(find amr_gazebo)/maps/tp2_map/disable_obstacle/map.yaml"/>
+  <arg name="safety_filter_map_path"    default="$(find binary_filter)/map/ware_house.yaml"/> 
 
   <node name="static_map_server" pkg="map_server" type="map_server" args="$(arg map_file)" ns="/" output="screen">
     <param name="frame_id" type="string" value="map"/>
@@ -18,6 +19,10 @@
 
   <node name="disable_obstacle_map" pkg="map_server" type="map_server" args="$(arg speed_filter_map_path)" ns="/disable_obstacle" output="screen">
       <param name="frame_id" type="string" value="map"/>
+  </node>
+
+  <node name="safety_filter_map_server" pkg="map_server" type="map_server" args="$(arg safety_filter_map_path)" ns="/safety_filter" output="screen">
+    <param name="frame_id" type="string" value="map"/>
   </node>
 
 </launch>

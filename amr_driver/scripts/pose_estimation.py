@@ -139,7 +139,7 @@ class PoseEstimation():
                     self.pose.orientation.z = pose[2]
                     self.pose.orientation.w = pose[3]
 
-                    rospy.loginfo("PoseEstimation: Take the robot's current position")
+                    rospy.logdebug("PoseEstimation: Take the robot's current position")
                     self.setPoseEstimation(self.pose)
                     self.state_flag = True
                 

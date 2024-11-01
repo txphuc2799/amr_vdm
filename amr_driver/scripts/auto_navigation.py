@@ -101,7 +101,7 @@ class AutoNavigation():
         rospy.init_node('auto_navigation')
 
         self.params = Parameter()
-        self.initParams()
+        self.init_params()
 
         # Listen to Transfromation
         self.__tfBuffer = tf2_ros.Buffer(cache_time=rospy.Duration(5.0))
@@ -147,7 +147,7 @@ class AutoNavigation():
         # Variables:
         self.start_amr = 0
         self.detect_obstacle_ = False
-        self.is_canceled_ = False
+        self.is_stopped_ = False
         self.is_pausing_  = False
         self.is_running_ = False
         self.dock_name = 0
@@ -155,17 +155,18 @@ class AutoNavigation():
         self.prev_state = 0
 
         # Waypoints:
-        self.line_55_clr_goal = self.yamlPose("line_55_clr_goal")
-        self.line_56_clr_goal = self.yamlPose("line_56_clr_goal")
+        self.line_55_clr_goal = self.get_pose_from_yaml("line_55_clr_goal")
+        self.line_56_clr_goal = self.get_pose_from_yaml("line_56_clr_goal")
+        self.line_55_pickup_goal = self.get_pose_from_yaml("line_55_pickup_goal")
         
-        self.waypoint_clr_to_line_55 = self.yamlPose("waypoint_clr_to_line_55")
-        self.waypoint_line_55_back_to_clr = self.yamlPose("waypoint_line_55_back_to_clr")
+        self.waypoint_clr_to_line_55 = self.get_pose_from_yaml("waypoint_clr_to_line_55")
+        self.waypoint_line_55_back_to_clr = self.get_pose_from_yaml("waypoint_line_55_back_to_clr")
 
-        self.waypoint_clr_to_line_56 = self.yamlPose("waypoint_clr_to_line_56")
-        self.waypoint_line_56_back_to_clr = self.yamlPose("waypoint_line_56_back_to_clr")
+        self.waypoint_clr_to_line_56 = self.get_pose_from_yaml("waypoint_clr_to_line_56")
+        self.waypoint_line_56_back_to_clr = self.get_pose_from_yaml("waypoint_line_56_back_to_clr")
 
-        self.charger_goal_ = self.yamlPose("charger_goal")
-        self.park_goal_ = self.yamlPose("amr_park_tp2")
+        self.charger_goal_ = self.get_pose_from_yaml("charger_goal")
+        self.park_goal_ = self.get_pose_from_yaml("amr_park_tp2")
 
         # Publishers:
         self.pub_pose_array  = rospy.Publisher(self.params.waypoints_list_topic, PoseArray, queue_size=1, latch=True)
@@ -175,7 +176,6 @@ class AutoNavigation():
         self.pub_cmd_vel     = rospy.Publisher("/amr/mobile_base_controller/cmd_vel", Twist, queue_size=5)
         self.pub_runonce     = rospy.Publisher("state_runonce_nav", Bool, queue_size=5)
         self._pub_mode_error = rospy.Publisher("error_mode", Int16, queue_size=5)
-        self.pub_switch_safety_zone = rospy.Publisher("safety_zone_type", Int16, queue_size=5)
         self.pub_turn_off_front_safety = rospy.Publisher("turn_off_front_safety", Bool,queue_size=5)
         self.pub_turn_off_ultrasonic_safety = rospy.Publisher("turn_off_ultrasonic_safety", Bool,queue_size=5)
         self.run_controller_pub_ = rospy.Publisher("/run_rs_controller", Bool, queue_size=5)
@@ -185,10 +185,10 @@ class AutoNavigation():
         rospy.Subscriber("PAUSE_AMR", Bool, self.pause_callback)
         rospy.Subscriber("CANCEL_AMR", Bool, self.cancel_callback)
         rospy.Subscriber("emergency_stop", Bool, self.emergency_stop_callback)
-        rospy.Subscriber("status_protected_field", Bool, self.protectedFieldCb)
+        rospy.Subscriber("status_protected_field", Bool, self.protected_filed_callback)
 
 
-    def initParams(self):
+    def init_params(self):
         rospy.loginfo("NODE: AutoNavigation")
 
         param_names = [attr for attr in dir(self.params) if not callable(getattr(self.params, attr)) and not attr.startswith("__")]
@@ -200,50 +200,36 @@ class AutoNavigation():
             setattr(self.params, param_name, param_val)
     
     def cancel_callback(self, msg: Bool):
-        if self.is_running_:
-            if msg.data:
-                self.is_canceled_ = True
-                self.runOnce(False)
+        self.is_stopped_ = msg.data
 
     def pause_callback(self, msg:Bool):
         self.is_pausing_ = msg.data
     
     def emergency_stop_callback(self, msg:Bool):
-        if self.is_running_:
-            if msg.data:
-                self.is_canceled_ = True
-                self.runOnce(False)
+        self.is_stopped_ = msg.data
 
-    def protectedFieldCb(self, msg:Bool):
+    def protected_filed_callback(self, msg:Bool):
         self.detect_obstacle_ = msg.data
     
-    def turnOnBrake(self, signal):
+    def turn_off_brake(self, signal):
         self.pub_cmd_brake.publish(signal)
     
-    def pubModeError(self, data):
+    def publish_mode_error(self, data):
         mode_error = Int16()
         mode_error.data = data
         self._pub_mode_error.publish(mode_error)
     
-    def runOnce(self, signal):
+    def runonce(self, signal):
         self.pub_runonce.publish(signal)
     
-    def switchSafetyZone(self, signal):
-        """
-        `signal = 2`: Switch back safety zone to small zone
-        `signal = 3`: Switch back safety zone to default zone
-        """
-        self.pub_switch_safety_zone.publish(signal)
-
     def reset(self):
         self.error = 2
-        self.is_canceled_ = False
+        self.is_stopped_ = False
         self.is_running_ = False
-        self.runOnce(False)
-        self.turnOnBrake(True)
-        self.switchSafetyZone(3)
+        self.runonce(False)
+        self.turn_off_brake(True)
     
-    def yamlPose(self, position_name: str):
+    def get_pose_from_yaml(self, position_name: str):
         """
         Get position from yaml file
         """
@@ -259,20 +245,7 @@ class AutoNavigation():
             except:
                 return position    
 
-    def binFilter(self, input: float, abs_boundary: float) -> float:
-        """
-        Simple binary filter, will provide abs_ceiling as a binary output,
-        according to the 'negativity' of the input value
-        :param input        : input value
-        :param abs_boundary : abs boundary value
-        :return             : output binary value
-        """
-        output = abs(abs_boundary)
-        if input < 0:
-            output = -abs(abs_boundary)
-        return output
-
-    def getMatFromOdomMsg(self, msg: Odometry) -> np.ndarray:
+    def get_mat_from_odom_msg(self, msg: Odometry) -> np.ndarray:
         """
         This will return a homogenous transformation of odom pose msg
         :param :    input odom msg
@@ -329,7 +302,7 @@ class AutoNavigation():
         :return : 4x4 homogenous matrix, None if not avail
         """
         try:
-            return self.getMatFromOdomMsg(
+            return self.get_mat_from_odom_msg(
                 rospy.wait_for_message(
                     "/amr/odometry/filtered", Odometry, timeout=1.0)
             )
@@ -365,44 +338,7 @@ class AutoNavigation():
         return trans[0], trans[1], euler[2]
     
 
-    def satProportionalFilter(self,
-            input: float, abs_min=0.0, abs_max=10.0, factor=1.0) -> float:
-        """
-        Simple saturated proportional filter
-        :param input                : input value
-        :param abs_min and abs_max  : upper and lower bound, abs value
-        :param factor               : multiplier factor for the input value
-        :return                     : output filtered value, within boundary
-        """
-        output = 0.0
-        input *= factor
-        if abs(input) < abs_min:
-            if (input < 0):
-                output = -abs_min
-            else:
-                output = abs_min
-        elif abs(input) > abs_max:
-            if (input > 0):
-                output = abs_max
-            else:
-                output = -abs_max
-        else:
-            output = input
-        return output
-    
-
-    def limitAngularVelocity(self, input:float, angular_velocity:float,
-                               min_angular, max_angular) -> float:
-
-        if angular_velocity > max_angular:
-            angular_velocity = max_angular
-        elif angular_velocity < min_angular:
-            angular_velocity = min_angular
-
-        return angular_velocity if input > 0 else -angular_velocity
-    
-
-    def setSpeed(self, linear_vel=0.0, angular_vel=0.0):
+    def publish_velocity(self, linear_vel=0.0, angular_vel=0.0):
         """
         Command the robot to move, default param is STOP!
         """
@@ -412,12 +348,12 @@ class AutoNavigation():
         self.pub_cmd_vel.publish(msg)
     
 
-    def rotateWithOdom(self, min_angular_vel, max_angular_vel, rotate: float) -> bool:
+    def rotate_with_odom(self, min_angular_vel, max_angular_vel, rotate: float) -> bool:
         """
         Spot Rotate the robot with odom. Blocking function
         :return : success
         """
-        rospy.logwarn(f"AutoNavigation: Turn robot: {rotate:.2f} rad")
+        rospy.loginfo(f"AutoNavigation: Turn robot: {rotate:.2f} rad")
 
         _initial_tf = self.get_odom()
         if _initial_tf is None:
@@ -430,7 +366,7 @@ class AutoNavigation():
         prev_time = rospy.Time.now()
         while not rospy.is_shutdown():
 
-            if self.is_canceled_:
+            if self.is_stopped_:
                 return False
             
             if self.is_pausing_ or self.detect_obstacle_:
@@ -445,8 +381,8 @@ class AutoNavigation():
                 dx, dy, dyaw = self.compute_tf_diff(_curr_tf, _goal_tf)
 
                 if abs(dyaw) < self.params.stop_yaw_diff:
-                    self.setSpeed()
-                    rospy.logwarn("AutoNavigation: Done with rotate robot")
+                    self.publish_velocity()
+                    rospy.loginfo("AutoNavigation: Done with rotate robot")
                     return True
                 
                 time_now = rospy.Time.now()
@@ -455,12 +391,12 @@ class AutoNavigation():
                 sign = 1 if rotate > 0 else -1
                 angular_vel = sign*angular_vel_pid
                 
-                self.setSpeed(angular_vel=angular_vel)
+                self.publish_velocity(angular_vel=angular_vel)
                 prev_time = time_now
             rospy.sleep(self.sleep_period)
         exit(0)
     
-    def moveWithOdom(self, min_speed: float, max_speed: float, forward:float) -> bool:
+    def move_with_odom(self, min_speed: float, max_speed: float, forward:float) -> bool:
         """
         Move robot in linear motion with Odom. Blocking function
         :return : success
@@ -477,7 +413,7 @@ class AutoNavigation():
         # second mat
         prev_time = rospy.Time.now()
         while not rospy.is_shutdown():
-            if self.is_canceled_:
+            if self.is_stopped_:
                 return False
             
             if self.is_pausing_ or self.detect_obstacle_:
@@ -492,8 +428,8 @@ class AutoNavigation():
                 dx, dy, dyaw = self.compute_tf_diff(_curr_tf, _goal_tf)
 
                 if abs(dx) < self.params.stop_trans_diff:
-                    self.setSpeed()
-                    rospy.logwarn("AutoNavigation: Done with move robot")
+                    self.publish_velocity()
+                    rospy.loginfo("AutoNavigation: Done with move robot")
                     return True
 
                 # This makes sure that the robot is actually moving linearly
@@ -503,7 +439,7 @@ class AutoNavigation():
                 ang_vel = self.sat_proportional_filter(dyaw, abs_max=self.params.min_angular_vel, factor=0.2)
                 l_vel   = self.bin_filter(dx, l_vel_pid)
 
-                self.setSpeed(linear_vel=l_vel, angular_vel=ang_vel)
+                self.publish_velocity(linear_vel=l_vel, angular_vel=ang_vel)
                 prev_time = time_now
             rospy.sleep(self.sleep_period)
         exit(0)
@@ -534,21 +470,21 @@ class AutoNavigation():
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException):
-            rospy.logwarn(f"AutoNavigation: Failed lookup: {self.params.robot_base_frame_id}, from {self.params.map_frame_id}")
+            rospy.logerr(f"AutoNavigation: Failed lookup: {self.params.robot_base_frame_id}, from {self.params.map_frame_id}")
             return None
         
     
-    def pubWaypointList(self):
+    def pub_waypoint_list(self):
         """Helper method to publish the waypoints that should be followed."""
         try:
-            self.pub_pose_array.publish(self.toPoseArray(self.waypoints))
+            self.pub_pose_array.publish(self.to_pose_array(self.waypoints))
             return True
         except:
             return False
         
     
     # helper methods
-    def toPoseArray(self, waypoints):
+    def to_pose_array(self, waypoints):
         """Publish waypoints as a pose array so that you can see them in rviz."""
         poses = PoseArray()
         poses.header.frame_id = self.params.map_frame_id
@@ -556,7 +492,7 @@ class AutoNavigation():
         return poses
     
 
-    def sendMoveBaseGoal(self, pose: Pose):
+    def send_move_base_goal(self, pose: Pose):
         """Assemble and send a new goal to move_base"""
         goal = MoveBaseGoal()
         goal.target_pose.header.frame_id = self.params.map_frame_id
@@ -566,7 +502,7 @@ class AutoNavigation():
         self.move_base_client.send_goal(goal)
 
     
-    def navigateToGoal(self, pose):
+    def navigate_to_goal(self, pose):
         """
         Navigating robot to a goal on map
         `footprint`: `1` - default footprint (small) | `0` - big footprint
@@ -584,7 +520,7 @@ class AutoNavigation():
 
         INFO(f"AutoNavigation: Starting go to goal({pose[0]:.4f}, {pose[1]:.4f})")
 
-        self.sendMoveBaseGoal(poses)
+        self.send_move_base_goal(poses)
 
         self.move_base_client.wait_for_result()
 
@@ -597,7 +533,7 @@ class AutoNavigation():
             return False
 
 
-    def navigateThroughGoals(self, poses):
+    def navigate_through_goal(self, poses):
         """
         Navigating robot through goal list on map
         """
@@ -644,7 +580,7 @@ class AutoNavigation():
             
             goal = self.waypoints[0]
 
-            self.sendMoveBaseGoal(goal)
+            self.send_move_base_goal(goal)
 
             if len(self.waypoints) == 1:
                 self.move_base_client.wait_for_result()
@@ -673,7 +609,7 @@ class AutoNavigation():
                 
                 self.waypoints.pop(0)
 
-            self.pubWaypointList()
+            self.pub_waypoint_list()
             self.rate.sleep()
 
     
@@ -699,7 +635,7 @@ class AutoNavigation():
             ERROR("AutoNavigation: Service call failed: %s"%e)
 
     
-    def clearCostmap(self):
+    def clear_all_costmap(self):
         """
         Clear all costmaps
         """
@@ -711,7 +647,7 @@ class AutoNavigation():
             ERROR("AutoNavigation: Service call failed: %s"%e)
 
     
-    def enableApriltag(self, signal):
+    def enable_apriltag_detector(self, signal):
         """
         Dis or enable apriltag continuous detection
         `signal = False`: Disable | `signal = True`: Enable
@@ -732,7 +668,7 @@ class AutoNavigation():
             ERROR("AutoNavigation: Service call failed: %s"%e)
 
     
-    def autoDocking(self, dock_name:int=None, enable_Apriltag_detector:bool=None):
+    def send_auto_docking(self, dock_name:int=None, enable_Apriltag_detector:bool=None):
         """
         Auto docking action
         `dock_name`: L55 - `1`, `3`, `5` or `7` | L56 - `2`, `4`, `6` or `8`
@@ -742,7 +678,7 @@ class AutoNavigation():
             self.pub_dock_name.publish(dock_name)
         
         if enable_Apriltag_detector is not None:
-            self.enableApriltag(enable_Apriltag_detector)
+            self.enable_apriltag_detector(enable_Apriltag_detector)
 
         goal = AutoDockingGoal()
         goal.start_autodock = True
@@ -752,77 +688,69 @@ class AutoNavigation():
 
         if self.autodock_client.get_state() == GoalStatus.SUCCEEDED:
             INFO("AutoNavigation: Auto docking is complete!")
-            self.enableApriltag(False)
+            self.enable_apriltag_detector(False)
             return True
         else:
             ERROR("AutoNavigation: Auto docking is failed!")
-            self.enableApriltag(False)
+            self.enable_apriltag_detector(False)
             return False
 
     def navigate_to_charger(self):
         WARN("AutoNavigation: Battery is low, returning the charger...")
 
-        if not self.navigateThroughGoals(self.yamlPose("charging_waypoints")):
+        if not self.navigate_through_goal(self.get_pose_from_yaml("charging_waypoints")):
             return False
         
-        if not self.autoDocking():
+        if not self.send_auto_docking():
             return False
         
         return True
 
 
     #===============> LINE 55 <================#
-    def pickUpClrOrderLine55(self):
+    def pickup_at_cleaning_room_line_55(self):
         """
         AMR picks up the line 55 motor order in the cleaning room
         """
-        if not self.navigateToGoal(self.line_55_clr_goal):
+        if not self.navigate_to_goal(self.line_55_clr_goal):
             return False
-        if not self.autoDocking(1, True):
+        if not self.send_auto_docking(1, True):
             self.error = 1
             return False
         return True
     
-    def deliverToLine55(self):
+    def deliver_to_line_55(self):
         """
         AMR transports of motor to line 55 after cleaned
         """
-        if not self.navigateThroughGoals(self.waypoint_clr_to_line_55):
+        if not self.navigate_through_goal(self.waypoint_clr_to_line_55):
             return False
-        if not self.autoDocking(3):
+        if not self.send_auto_docking(3):
             self.error = 0
             return False
         return True
 
-    def pickUpOderLine55(self):
+    def pickup_at_line_55(self):
         """
         AMR picks up the unclean motor at line 55
         """
-        if (not self.rotateWithOdom(self.params.min_angular_vel, self.params.max_angular_vel, 92*math.pi/180)
-            or not self.moveWithOdom(self.params.min_linear_vel, self.params.max_linear_vel, 0.6)
-            or not self.rotateWithOdom(self.params.min_angular_vel, self.params.max_angular_vel, -92*math.pi/180)):
+        if not self.navigate_to_goal(self.line_55_pickup_goal):
             return False
-        if not self.autoDocking(5, True):
+        if not self.send_auto_docking(5, True):
             self.error = 1
-            return False
-        if not self.rotateWithOdom(self.params.min_angular_vel, self.params.max_angular_vel, 90*math.pi/180):
             return False
         return True
 
-    def deliverToClrLine55(self):
+    def deliver_to_cleaning_room_line_55(self):
         """
         AMR transports the unclean motor back to the cleaning room
         """
-        if not self.navigateThroughGoals(self.waypoint_line_55_back_to_clr):
+        if not self.navigate_through_goal(self.waypoint_line_55_back_to_clr):
             return False
-        if not self.rotateWithOdom(self.params.min_angular_vel, self.params.max_angular_vel, 182*math.pi/180):
+        if not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, 182*math.pi/180):
             return False
-        if not self.autoDocking(7):
+        if not self.send_auto_docking(7):
             self.error = 0
-            return False
-        if (not self.rotateWithOdom(self.params.min_angular_vel, self.params.max_angular_vel, -92*math.pi/180)
-            or not self.moveWithOdom(self.params.min_linear_vel, self.params.max_linear_vel, -0.6)
-            or not self.rotateWithOdom(self.params.min_angular_vel, self.params.max_angular_vel, 92*math.pi/180)):
             return False
         return True
     
@@ -832,9 +760,9 @@ class AutoNavigation():
         """
         AMR picks up the line 56 motor order in the cleaning room
         """
-        if not self.navigateToGoal(self.line_56_clr_goal):
+        if not self.navigate_to_goal(self.line_56_clr_goal):
             return False
-        if not self.autoDocking(2, True):
+        if not self.send_auto_docking(2, True):
             self.error = 1
             return False
         return True
@@ -843,11 +771,11 @@ class AutoNavigation():
         """
         AMR transports of motor to line 56 after cleaned
         """
-        if not self.navigateThroughGoals(self.waypoint_clr_to_line_56):
+        if not self.navigate_through_goal(self.waypoint_clr_to_line_56):
             return False
-        if not self.rotateWithOdom(self.params.min_angular_vel, self.params.max_angular_vel, -90*math.pi/180):
+        if not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, -90*math.pi/180):
             return False
-        if not self.autoDocking(4):
+        if not self.send_auto_docking(4):
             self.error = 0
             return False
         return True
@@ -856,20 +784,20 @@ class AutoNavigation():
         """
         AMR picks up the unclean motor at line 56
         """
-        if not self.rotateWithOdom(self.params.min_angular_vel, self.params.max_angular_vel, 90*math.pi/180):
+        if not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, 90*math.pi/180):
             return False
-        if not self.moveWithOdom(self.params.min_linear_vel, self.params.max_linear_vel, 1.5):
+        if not self.move_with_odom(self.params.min_linear_vel, self.params.max_linear_vel, 1.5):
             return False
-        if not self.rotateWithOdom(self.params.min_angular_vel, self.params.max_angular_vel, -90*math.pi/180):
+        if not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, -90*math.pi/180):
             return False
-        if not self.autoDocking(6, True):
+        if not self.send_auto_docking(6, True):
             self.error = 1
             return False
-        if not self.rotateWithOdom(self.params.min_angular_vel, self.params.max_angular_vel, -60*math.pi/180):
+        if not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, -60*math.pi/180):
             return False
-        if not self.moveWithOdom((self.params.min_linear_vel, self.params.max_linear_vel - 0.15), -0.3):
+        if not self.move_with_odom((self.params.min_linear_vel, self.params.max_linear_vel - 0.15), -0.3):
             return False
-        if not self.rotateWithOdom(self.params.min_angular_vel, self.params.max_angular_vel, -30*math.pi/180):
+        if not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, -30*math.pi/180):
             return False
         return True
 
@@ -877,83 +805,62 @@ class AutoNavigation():
         """
         AMR transports the unclean motor back to the cleaning room
         """
-        if not self.navigateThroughGoals(self.waypoint_line_56_back_to_clr):
+        if not self.navigate_through_goal(self.waypoint_line_56_back_to_clr):
             return False
-        if not self.rotateWithOdom(self.params.min_angular_vel, self.params.max_angular_vel, 92*math.pi/180):
+        if not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, 92*math.pi/180):
             return False
-        if not self.autoDocking(8):
+        if not self.send_auto_docking(8):
             self.error = 0
             return False
         return True
     
     
     #===============> Charger <================#
-    def navigateToCharger(self):
-        if not self.navigateToGoal(self.charger_goal_):
+    def navigate_to_charger(self):
+        if not self.navigate_to_goal(self.charger_goal_):
             self.error = 2
             return False
-        if not self.autoDocking(57):
+        if not self.send_auto_docking(57):
             self.error = 2
             return False
         return True
 
 
     #===============> MAIN RUN <===============#
-    def line55Navigation(self, signal):
+    def line_55_navigation(self, signal):
         if signal == 1:
             if (
-                self.pickUpClrOrderLine55() and
-                self.deliverToLine55() and
-                self.pickUpOderLine55() and
-                self.deliverToClrLine55()
+                self.pickup_at_cleaning_room_line_55() and
+                self.deliver_to_line_55() and
+                self.pickup_at_line_55() and
+                self.deliver_to_cleaning_room_line_55()
             ):  return True
 
         elif signal == 2:
-            if self.deliverToClrLine55(): return True   
+            if self.deliver_to_cleaning_room_line_55(): return True   
 
         else:
             if (
-                self.deliverToLine55() and
-                self.pickUpOderLine55() and
-                self.deliverToClrLine55()
+                self.deliver_to_line_55() and
+                self.pickup_at_line_55() and
+                self.deliver_to_cleaning_room_line_55()
             ):  return True
         
-        return False
-
-    def line56Navigation(self, signal):
-        if signal == 4:
-            if (
-                self.pickUpLine56ClrOrder() and
-                self.deliverToLine56() and
-                self.pickUpOrderLine56() and
-                self.deliverToClrLine56()
-            ):  return True
-
-        elif signal == 5:
-            if self.deliverToClrLine56(): return True   
-
-        else:
-            if (
-                self.deliverToLine56() and
-                self.pickUpOrderLine56() and
-                self.deliverToClrLine56()
-            ):  return True
         return False
 
     
     def run(self, signal: Int16MultiArray):
         self.start_amr = signal.data
         self.is_running_ = True
-        self.runOnce(True)
-        self.turnOnBrake(False)
-        self.switchSafetyZone(3)
+        self.runonce(True)
+        self.turn_off_brake(False)
 
         if self.prev_state == 57:
-            if (not self.moveWithOdom(self.params.min_linear_vel, self.params.max_linear_vel, -1.0)
-                and not self.rotateWithOdom(self.params.min_angular_vel, self.params.max_angular_vel, 90*math.pi/180)):
+            if (not self.move_with_odom(self.params.min_linear_vel, self.params.max_linear_vel, -1.0)
+                and not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, 90*math.pi/180)):
                 ERROR("AutoNavigation: Navigation is failed!")
                 self.error = 2
-                self.pubModeError(self.error)
+                self.publish_mode_error(self.error)
                 self.reset()
                 return False
             self.pub_turn_off_front_safety.publish(False)
@@ -961,25 +868,17 @@ class AutoNavigation():
 
         if self.start_amr[0] == 55:
             self.prev_state = 55
-            if not self.line55Navigation(self.start_amr[1]):
+            if not self.line_55_navigation(self.start_amr[1]):
                 ERROR("AutoNavigation: Navigation is failed!")
-                self.pubModeError(self.error)
-                self.reset()
-                return False
-        
-        elif self.start_amr[0] == 56:
-            self.prev_state = 56
-            if not self.line56Navigation(self.start_amr[1]):
-                ERROR("AutoNavigation: Navigation is failed!")
-                self.pubModeError(self.error)
+                self.publish_mode_error(self.error)
                 self.reset()
                 return False
         
         elif self.start_amr[0] == 57:
             self.prev_state = 57
-            if not self.navigateToCharger():
+            if not self.navigate_to_charger():
                 ERROR("AutoNavigation: Navigation is failed!")
-                self.pubModeError(self.error)
+                self.publish_mode_error(self.error)
                 self.reset()
                 return False
             

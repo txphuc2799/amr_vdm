@@ -1,5 +1,9 @@
 import rospy
 
-INFO = rospy.loginfo("Phuc: ")
+b = 2
 
-INFO("HAHA")
+a = {'x': 2*b}
+
+a['x']
+
+print(a)

@@ -5,7 +5,7 @@
   <arg name="use_sim"                default="false"/>
   <arg name="rviz_file"              default="$(find amr_navigation)/rviz/navigation_sim.rviz"/>
   <arg name="controller"             default="rs"/>
-  <arg name="planner"                default="thetas"/>
+  <arg name="planner"                default="navfn"/>
   <arg name="map_file"               default="$(find amr_gazebo)/maps/simulation/test.yaml"/>
   <arg name="virtual_walls_map_file" default="$(find amr_gazebo)/maps/maze_virtual_walls.yaml"/>
   <arg name="with_virtual_walls"     default="false" />

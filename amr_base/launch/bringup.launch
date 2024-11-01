@@ -9,10 +9,11 @@
     <arg name="angle_end_front"           default="1.745329252"/>
     <arg name="angle_start_back"          default="-1.832595715"/>
     <arg name="angle_end_back"            default="1.832595715"/>
-    <arg name="map_file"                  default="$(find amr_gazebo)/maps/tp2_map/edited_map/tp2_edited_map.yaml"/>
-    <arg name="virtual_wall_file"         default="$(find amr_gazebo)/maps/tp2_map/virtual_wall_map/tp2_virtual_wall_map.yaml"/>
+    <arg name="map_file"                  default="$(find amr_gazebo)/maps/tp2_map/edited/map.yaml"/>
+    <arg name="virtual_wall_file"         default="$(find amr_gazebo)/maps/tp2_map/virtual_wall/map.yaml"/>
     <arg name="speed_filter_map_path"     default="$(find amr_gazebo)/maps/tp2_map/speed_filter/map.yaml"/>
     <arg name="disable_obstacle_map_path" default="$(find amr_gazebo)/maps/tp2_map/disable_obstacle/map.yaml"/>
+    <arg name="safety_filter_map_path"    default="$(find amr_gazebo)/maps/tp2_map/safety_zone/map.yaml"/>
     <!-- <arg name="map_file"                  default="$(find amr_gazebo)/maps/map_tp3/edited/map.yaml"/>
     <arg name="virtual_wall_file"         default="$(find amr_gazebo)/maps/map_tp3/virtual_walls/map.yaml"/>
     <arg name="speed_filter_map_path"     default="$(find amr_gazebo)/maps/map_tp3/safety_filter/map.yaml"/>
@@ -93,6 +94,7 @@
         <arg name="virtual_wall_file"          value="$(arg virtual_wall_file)"/>
         <arg name="speed_filter_map_path"      value="$(arg speed_filter_map_path)" />
         <arg name="disable_obstacle_map_path"  value="$(arg disable_obstacle_map_path)" />
+        <arg name="safety_filter_map_path"     value="$(arg safety_filter_map_path)" />
     </include>
 
     <!-- Launch FLEET CLIENT -->

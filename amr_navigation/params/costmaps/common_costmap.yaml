@@ -28,17 +28,56 @@ virtual_walls_map:
   map_topic: /virtual_walls/map
   use_maximum: true
 
-speed_filter:
-  map_topic: /speed_filter/map
-  binary_state_topic: /binary_state
-  enable: true
-
 disable_obstacle:
   map_topic: /disable_obstacle/map
   global_obtascle_srv_name: /move_base_node/global_costmap/obstacles/set_parameters
   local_obstacle_srv_name: /move_base_node/local_costmap/obstacles/set_parameters
   enable: true
   max_height_obstacle: 0.25
+
+speed_filter:
+  map_topic: /speed_filter/map
+  speed_limit_topic: /speed_limit
+  base: 100.0
+  multiplier: -1.0
+  type: 1 # 1: speed limit filter in % of maximum speed
+          # 2: speed limit filter in absolute values (m/s)
+  enable: true
+
+binary_filter:
+  map_topic: /safety_filter/map
+  binary_state_topic: /safety_filter/safety_state
+  enable: true
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # rgbd_obstacle_layer:
 #   enabled:               true

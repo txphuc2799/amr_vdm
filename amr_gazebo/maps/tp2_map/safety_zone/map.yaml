@@ -1,4 +1,4 @@
-image: tp2_map_safety_zone.pgm
+image: map.pgm
 mode: scale
 resolution: 0.050000
 origin: [-200.000000, -200.000000, 0.000000]
