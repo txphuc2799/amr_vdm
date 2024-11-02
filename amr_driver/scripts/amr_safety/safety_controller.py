@@ -13,6 +13,9 @@ class SafetyController():
 
     def __init__(self):
 
+        self.speed_at_warninglv1 = rospy.getparam("~speed_at_warninglv1", 0.55)
+        self.speed_at_warninglv2 = rospy.getparam("~speed_at_warninglv1", 0.7)
+
         # Setup loop frequency
         self.loop_freq_ = 10.0
 
@@ -35,6 +38,9 @@ class SafetyController():
         self.ultrasonic_safety_status_ = SafetyStatus.NORMAL
         self.field_state_      = SafetyStatus.NORMAL
         self.prev_field_state_ = SafetyStatus.NORMAL
+
+        # Create move_base client
+        self.client_movebase = dc.Client("/move_base_node")
 
         # Publisher
         self.pub_status_protected_field = rospy.Publisher("status_protected_field", Bool, queue_size=5)
@@ -93,7 +99,6 @@ class SafetyController():
     def configureOscillationTimeOut(self,config):
         if self.is_pausing_:
             return
-        self.client_movebase = dc.Client("/move_base_node")
         self.client_movebase.update_configuration(config)
 
     def front_safety_status_callback(self, msg:SafetyStatusStamped):
@@ -113,9 +118,9 @@ class SafetyController():
 
     def update_velocity(self, field):
         if field == SafetyStatus.WARNING_LV1:
-            speed_limit_per = 0.55  #%
+            speed_limit_per = self.speed_at_warninglv1  #%
         elif field == SafetyStatus.WARNING_LV2:
-            speed_limit_per = 0.7   #%
+            speed_limit_per = self.speed_at_warninglv2  #%
         elif field == SafetyStatus.NORMAL:
             speed_limit_per = 1.0   #%
 
