@@ -2,6 +2,7 @@ base_local_planner: rotation_shim_controller/RotationShimController
 RotationShimController:
   # primary_controller: dwb_controller/DWBController
   primary_controller: vector_pursuit_controller/VectorPursuitController
+  running_topic: /amr/state_runonce_nav
   controller_frequency: 20.0
   transform_tolerance: 0.5
   simulate_ahead_time: 1.0
@@ -15,6 +16,7 @@ RotationShimController:
   # Vector Pure Pursuit
   VectorPursuitController:
     odom_topic: /amr/odometry/filtered
+    running_topic: /amr/state_runonce_nav
     control_frequency: 20.0
     k: 6.0
     desired_linear_vel: 0.7
