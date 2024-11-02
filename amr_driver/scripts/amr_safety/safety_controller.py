@@ -13,8 +13,8 @@ class SafetyController():
 
     def __init__(self):
 
-        self.speed_at_warninglv1 = rospy.getparam("~speed_at_warninglv1", 0.55)
-        self.speed_at_warninglv2 = rospy.getparam("~speed_at_warninglv1", 0.7)
+        self.speed_per_at_warninglv1 = rospy.getparam("~speed_per_at_warninglv1", 0.55)
+        self.speed_per_at_warninglv2 = rospy.getparam("~speed_per_at_warninglv1", 0.7)
 
         # Setup loop frequency
         self.loop_freq_ = 10.0
@@ -118,9 +118,9 @@ class SafetyController():
 
     def update_velocity(self, field):
         if field == SafetyStatus.WARNING_LV1:
-            speed_limit_per = self.speed_at_warninglv1  #%
+            speed_limit_per = self.speed_per_at_warninglv1  #%
         elif field == SafetyStatus.WARNING_LV2:
-            speed_limit_per = self.speed_at_warninglv2  #%
+            speed_limit_per = self.speed_per_at_warninglv2  #%
         elif field == SafetyStatus.NORMAL:
             speed_limit_per = 1.0   #%
 
