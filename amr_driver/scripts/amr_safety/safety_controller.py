@@ -3,7 +3,7 @@ import rospy
 import dynamic_reconfigure.client as dc
 
 from std_msgs.msg import Bool, Float32
-from amr_msgs.msg import CheckerSensorStateStamped
+from amr_msgs.msg import SliderSensorStamped
 from amr_msgs.msg import SafetyStatusStamped, SafetyStatus
 
 IN = 1
@@ -13,8 +13,8 @@ class SafetyController():
 
     def __init__(self):
 
-        self.speed_per_at_warninglv1 = rospy.getparam("~speed_per_at_warninglv1", 0.55)
-        self.speed_per_at_warninglv2 = rospy.getparam("~speed_per_at_warninglv1", 0.7)
+        self.speed_per_at_warninglv1 = rospy.get_param("~speed_per_at_warninglv1", 0.55)
+        self.speed_per_at_warninglv2 = rospy.get_param("~speed_per_at_warninglv2", 0.7)
 
         # Setup loop frequency
         self.loop_freq_ = 10.0
@@ -41,6 +41,8 @@ class SafetyController():
 
         # Create move_base client
         self.client_movebase = dc.Client("/move_base_node")
+        self.global_footprint_client = dc.Client("/move_base_node/global_costmap")
+        self.local_footprint_client = dc.Client("/move_base_node/local_costmap")
 
         # Publisher
         self.pub_status_protected_field = rospy.Publisher("status_protected_field", Bool, queue_size=5)
@@ -55,21 +57,17 @@ class SafetyController():
         rospy.Subscriber("turn_off_back_safety",Bool,self.turn_off_back_safety_callback)
         rospy.Subscriber("turn_off_front_safety", Bool, self.turn_off_front_safety_callback)
         rospy.Subscriber("turn_off_ultrasonic_safety", Bool, self.turn_off_ultrasonic_safety_callback)
-        rospy.Subscriber("slider_sensor_state", CheckerSensorStateStamped, self.switch_footprint_callback)
+        rospy.Subscriber("slider_sensor_state", SliderSensorStamped, self.switch_footprint_callback)
 
     
-    def switch_footprint_callback(self, msg:CheckerSensorStateStamped):
-
-        global_footprint_client = dc.Client("/move_base_node/global_costmap")
-        local_footprint_client = dc.Client("/move_base_node/local_costmap")
-
-        if msg.sensor_state.data:
-            if msg.sensor_state.data[0] == IN:
-                global_footprint_client.update_configuration(self.default_footprint)
-                local_footprint_client.update_configuration(self.default_footprint)
-            elif msg.sensor_state.data[1] == OUT:
-                global_footprint_client.update_configuration(self.big_footprint)
-                local_footprint_client.update_configuration(self.big_footprint)
+    def switch_footprint_callback(self, msg:SliderSensorStamped):
+        if msg.sensor_state.state:
+            if msg.sensor_state.state[0] == IN:
+                self.global_footprint_client.update_configuration(self.default_footprint)
+                self.local_footprint_client.update_configuration(self.default_footprint)
+            elif msg.sensor_state.state[1] == OUT:
+                self.global_footprint_client.update_configuration(self.big_footprint)
+                self.local_footprint_client.update_configuration(self.big_footprint)
 
     def runonce_callback(self,msg: Bool):
         self.is_running_ = msg.data

@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
-import time
 import rospy
 from std_msgs.msg import Bool, Int16, Int16MultiArray, Empty
 from sensor_msgs.msg import Range
-from amr_msgs.msg import CheckerSensorStateStamped
+from amr_msgs.msg import SliderSensorStamped
 from amr_driver.mcprotocol.type1e import Type1E
 
 
@@ -54,8 +53,8 @@ class PCReadPLC(Type1E):
         self.pub_hand_control     = rospy.Publisher("HAND_CONTROL_AMR", Bool, queue_size=5)
         self.pub_EMS              = rospy.Publisher("emergency_stop", Bool, queue_size=5)
         self.pub_initialpose      = rospy.Publisher("pose_estimation", Int16, queue_size=1)
-        self.pub_cart_sensor      = rospy.Publisher("cart_sensor_state", CheckerSensorStateStamped, queue_size=5)
-        self.pub_max_slider       = rospy.Publisher("slider_sensor_state", CheckerSensorStateStamped, queue_size=5)
+        self.pub_cart_sensor      = rospy.Publisher("cart_sensor_state", SliderSensorStamped, queue_size=5)
+        self.pub_max_slider       = rospy.Publisher("slider_sensor_state", SliderSensorStamped, queue_size=5)
         self.pub_pickup_current_state = rospy.Publisher("pickup_current_state", Bool, queue_size=1)
         self.pub_drop_current_state   = rospy.Publisher("drop_current_state", Bool, queue_size=1)
         
@@ -72,7 +71,6 @@ class PCReadPLC(Type1E):
         self.drop_current_state = 0
         self.cart_sensor_state = [0,0]
         self.slider_sensor_state = [0,0]
-        self.sensor_state_array = CheckerSensorStateStamped()
         self.goal_name = Int16MultiArray()
 
     def initParams(self):
@@ -222,19 +220,21 @@ class PCReadPLC(Type1E):
             # bit_array[7] - M407: left_cart_sensor
             # bit_array[8] - M408: right_cart_sensor   
             if bit_array[7:9] != self.cart_sensor_state:
-                self.sensor_state_array.header.stamp = rospy.Time.now()
-                self.sensor_state_array.sensor_state.sensor_name = ["left_cart, right_cart"]
-                self.sensor_state_array.sensor_state.data = bit_array[7:9]
-                self.pub_cart_sensor.publish(self.sensor_state_array)
+                cart_sensor = SliderSensorStamped()
+                cart_sensor.header.stamp = rospy.Time.now()
+                cart_sensor.sensor_state.sensor_name = ["left_cart, right_cart"]
+                cart_sensor.sensor_state.state = bit_array[7:9]
+                self.pub_cart_sensor.publish(cart_sensor)
                 self.cart_sensor_state = bit_array[7:9]
 
             # bit_array[9]  - M409: original slider bit
             # bit_array[10] - M410: max slider bit
             if bit_array[9:11] != self.slider_sensor_state:
-                self.sensor_state_array.header.stamp = rospy.Time.now()
-                self.sensor_state_array.sensor_state.sensor_name = ["origin_slider, max_slider"]
-                self.sensor_state_array.sensor_state.data = bit_array[9:11]
-                self.pub_max_slider.publish(self.sensor_state_array)
+                slider_sensor = SliderSensorStamped()
+                slider_sensor.header.stamp = rospy.Time.now()
+                slider_sensor.sensor_state.sensor_name = ["origin_slider, max_slider"]
+                slider_sensor.sensor_state.state = bit_array[9:11]
+                self.pub_max_slider.publish(slider_sensor)
                 self.slider_sensor_state = bit_array[9:11]
 
             # bit_array[11] - M411: hand_control_bit

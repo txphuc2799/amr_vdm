@@ -30,7 +30,7 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool, Int16
 from amr_autodocking.msg import AutoDockingAction
 from amr_autodocking.msg import AutoDockingGoal, AutoDockingResult
-from amr_msgs.msg import CheckerSensorStateStamped
+from amr_msgs.msg import SliderSensorStamped
 from tf.transformations import euler_from_quaternion
 from sensor_msgs.msg import LaserScan
 from std_srvs.srv import SetBool
@@ -124,11 +124,10 @@ class AutoDockServer:
         # Initialize variables:
         self.left_range = 0.0
         self.right_range = 0.0
-        self.is_pause  = False
+        self.is_pausing_  = False
         self.high_motor_pickup_current = False
         self.high_motor_drop_current = False
-        self.obstacle_status = False
-        self.custom_rotation_state = 0
+        self.is_obstacle_detected_ = False
         self.custom_rotation = False
         self.pause_flag = False
         self.slider_sensor_state = [0,0]
@@ -166,7 +165,7 @@ class AutoDockServer:
         # debug timer for state machine marker
         if self.cfg.debug_mode:
             self.pub_marker = rospy.Publisher('/sm_maker', Marker, queue_size=1)
-            self.__timer = rospy.Timer(rospy.Duration(0.5), self.timerCB)
+            self.__timer = rospy.Timer(rospy.Duration(0.5), self.timer_callback)
 
         # Move_to_pose client
         # rospy.logwarn("AutoDockServer: Connecting to move to pose service...")
@@ -189,36 +188,34 @@ class AutoDockServer:
         rospy.loginfo("AutoDockServer: Connected to front & back line extraction detector service.")
 
         # Publishers
-        self.pub_cmd_vel    = rospy.Publisher("/amr/mobile_base_controller/cmd_vel", Twist, queue_size=5)
-        self.pub_cmd_brake  = rospy.Publisher("cmd_brake", Bool, queue_size=5)
-        self.pub_cmd_slider = rospy.Publisher("cmd_slider", Int16, queue_size=5)
-        self.pub_error      = rospy.Publisher("error_name", Int16, queue_size=5)
-        self.pub_turn_off_back_safety = rospy.Publisher("turn_off_back_safety", Bool,queue_size=5)
-        self.pub_turn_off_front_safety = rospy.Publisher("turn_off_front_safety", Bool,queue_size=5)
-        self.pub_turn_off_ultrasonic_safety = rospy.Publisher("turn_off_ultrasonic_safety", Bool,queue_size=5)
+        self.cmd_vel_pub_    = rospy.Publisher("/amr/mobile_base_controller/cmd_vel", Twist, queue_size=5)
+        self.cmd_brake_pub_  = rospy.Publisher("cmd_brake", Bool, queue_size=5)
+        self.cmd_slider_pub_ = rospy.Publisher("cmd_slider", Int16, queue_size=5)
+        self.error_pub_      = rospy.Publisher("error_name", Int16, queue_size=5)
+        self.turn_off_back_safety_pub_ = rospy.Publisher("turn_off_back_safety", Bool,queue_size=5)
+        self.turn_off_front_safety_pub_ = rospy.Publisher("turn_off_front_safety", Bool,queue_size=5)
+        self.turn_off_ultrasonic_safety_pub_ = rospy.Publisher("turn_off_ultrasonic_safety", Bool,queue_size=5)
 
         # Subscribers
-        rospy.Subscriber("PAUSE_AMR", Bool, self.pauseAMRCB)
-        rospy.Subscriber("pickup_current_state", Bool, self.pickupCurrentStateCB)
-        rospy.Subscriber("drop_current_state", Bool, self.dropCurrentStateCB)
-        rospy.Subscriber("cart_sensor_state", CheckerSensorStateStamped, self.cartSensorStateCB)
-        rospy.Subscriber("slider_sensor_state", CheckerSensorStateStamped, self.sliderSensorStateCB)
-        rospy.Subscriber("status_protected_field", Bool, self.protectedFieldCB)
-        rospy.Subscriber("back_scan_rep177", LaserScan, self.laserScanCB)
-        rospy.Subscriber("custom_rotation", Int16, self.customRotationCB)
-        rospy.Subscriber("dock_name", Int16, self.dockNameCB)
+        rospy.Subscriber("PAUSE_AMR", Bool, self.pause_callback)
+        rospy.Subscriber("pickup_current_state", Bool, self.pickup_current_callback)
+        rospy.Subscriber("drop_current_state", Bool, self.dropoff_current_callback)
+        rospy.Subscriber("cart_sensor_state", SliderSensorStamped, self.cart_sensor_state_callback)
+        rospy.Subscriber("slider_sensor_state", SliderSensorStamped, self.slider_sensor_state_callback)
+        rospy.Subscriber("status_protected_field", Bool, self.protected_field_callback)
+        rospy.Subscriber("back_scan_rep177", LaserScan, self.laser_scan_callback)
+        rospy.Subscriber("dock_name", Int16, self.dock_name_callback)
 
         # Autodock action
         if run_server:
             self.autodock_action = actionlib.SimpleActionServer("autodock_action",
                                                                 AutoDockingAction,
-                                                                execute_cb=self.autoDockActionCB,
+                                                                execute_cb=self.auto_docking_callback,
                                                                 auto_start=False)
             self.autodock_action.start()
             self.feedback_msg = AutoDockingFeedback()
-
     
-    def enableLineDetector(self, laser_name:str, signal:bool):
+    def enable_line_detector(self, laser_name:str, signal:bool):
         """
         `laser_name`: "front" or "back"
         """
@@ -241,27 +238,14 @@ class AutoDockServer:
         
         except rospy.ServiceException as e:
             rospy.logerr("AutoDockServer: Service call failed: %s"%e)
-
     
     def distance2D(self, x, y):
         return (math.sqrt(pow(x, 2) + pow(y, 2)))
-
     
-    def customRotationCB(self, msg: Int16):
-        self.custom_rotation_state = msg.data
+    def dock_name_callback(self, msg:Int16):
+        self.dock_name = msg.data 
 
-    
-    def dockNameCB(self, msg:Int16):
-        self.dock_name = msg.data
-
-    
-    def rotateWithCustomRotation(self, forward):
-        return (self.rotateWithOdom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, -math.pi/3) and
-                self.moveWithOdom(self.cfg.min_linear_vel, self.cfg.max_linear_vel, forward) and
-                self.rotateWithOdom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, -math.pi/6))
-    
-
-    def updateLineExtractionParams(self, signal):
+    def update_line_extraction_params(self, signal):
         """
         `0`: Default params | `1`: Pickup params | `2`: Dropoff params
         """
@@ -276,9 +260,8 @@ class AutoDockServer:
 
         # Create a delay
         rospy.sleep(0.2)
-
     
-    def updatePolygonParams(self, signal):
+    def update_polygon_params(self, signal):
         """
         `0`: Default params | `1`: Pickup params | `2`: Dropoff params
         """
@@ -294,8 +277,7 @@ class AutoDockServer:
         # Create a delay
         rospy.sleep(0.2)
 
-
-    def checkLaserFrame(self, laser_tf=None, tag_tf=None, laser_tf_name=None, tag_tf_name=None):
+    def check_laser_frame(self, laser_tf=None, tag_tf=None, laser_tf_name=None, tag_tf_name=None):
         """
         Check laser frame is close with tag frame
         """
@@ -311,7 +293,6 @@ class AutoDockServer:
         tag_x, tag_y, tag_yaw    = utils.get_2d_pose(tag_tf_)
 
         return (self.distance2D(dock_x - tag_x, dock_y - tag_y) <= 0.04)
-    
 
     def PIDController(self, dis_y):
         error = dis_y - self.last_error
@@ -319,7 +300,6 @@ class AutoDockServer:
         self.last_error = dis_y
         
         return angle
-
                 
     def correct_robot(self, offset, signal, rotate_angle=30, rotate_orientation=0,
                       factor_30=math.sqrt(3), factor_45=math.sqrt(2), factor_60=2/math.sqrt(3)) -> bool:
@@ -376,20 +356,19 @@ class AutoDockServer:
             x1 = a*offset
             x2 = 0
 
-        self.setState(DockState.CORRECTION, f"AutoDockServer: Correcting robot {msg} degrees with {offset:.2f}m!")
+        self.set_state(DockState.CORRECTION, f"AutoDockServer: Correcting robot {msg} degrees with {offset:.2f}m!")
 
         if signal > 0:
             a = -1   
 
         return(
-            self.rotateWithOdom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, a * alpha)
-            and self.moveWithOdom(self.cfg.min_linear_vel,self.cfg.max_linear_vel_predock, x1)
-            and self.rotateWithOdom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, -a * alpha)
-            and self.moveWithOdom(self.cfg.min_linear_vel,self.cfg.max_linear_vel_predock, x2)
+            self.rotate_with_odom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, a * alpha)
+            and self.move_with_odom(self.cfg.min_linear_vel,self.cfg.max_linear_vel_predock, x1)
+            and self.rotate_with_odom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, -a * alpha)
+            and self.move_with_odom(self.cfg.min_linear_vel,self.cfg.max_linear_vel_predock, x2)
         )
-    
 
-    def checkDistanceAndCorrection(self, x_distance, y_distance, distance_threshold, laser_offset):
+    def auto_correction(self, x_distance, y_distance, distance_threshold, laser_offset):
         """
         Robot correct and move backward if distance from back_laser_link to tag_frame > distance_threshold
         """
@@ -419,15 +398,14 @@ class AutoDockServer:
             if self.cfg.debug_mode:
                 print(f"AutoDockServer: Rotate robot with {rot_angle}rad and move {dis_move}m.")
                 
-            self.setState(DockState.CORRECTION, f"AutoDockServer: Correcting robot with angle flex - offset: {y_distance:.2f}m!")
+            self.set_state(DockState.CORRECTION, f"AutoDockServer: Correcting robot with angle flex - offset: {y_distance:.2f}m!")
 
             return (
-                self.rotateWithOdom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, rot_angle)
-                and self.moveWithOdom(self.cfg.min_linear_vel, self.cfg.max_linear_vel_predock, dis_move)
-                and self.rotateWithOdom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, -rot_angle)
+                self.rotate_with_odom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, rot_angle)
+                and self.move_with_odom(self.cfg.min_linear_vel, self.cfg.max_linear_vel_predock, dis_move)
+                and self.rotate_with_odom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, -rot_angle)
             )
         
-    
     # def send_goal(self, x, y, theta):
     #     """
     #     Send goal to move_to_pose
@@ -440,8 +418,7 @@ class AutoDockServer:
     #     except rospy.ServiceException as e:
     #         rospy.logerr("Service call failed: %s"%e)
 
-    
-    def enableApriltag(self, signal):
+    def enable_apriltag_detector(self, signal):
         """
         `signal = False`: Disable | `signal = True`: Enable
         """
@@ -460,66 +437,55 @@ class AutoDockServer:
         except rospy.ServiceException as e:
             rospy.logerr("AutoDockServer: Service call failed: %s"%e)
     
-
-    def resetVariable(self):
-        """
-        Reset some values when start autodock
-        """
+    def reset(self):
         self.dock_state = DockState.IDLE
-        self.is_pause  = False
+        self.is_pausing_  = False
         self.high_motor_pickup_current = False
         self.high_motor_drop_current = False
-        self.custom_rotation = 0
-        self.turnOnBrake(False)
+        self.brake(False)
+    
+    def reset_after_fail(self):
+        self.publish_velocity()
+        self.turn_off_back_safety(False)
+        self.turn_off_front_safety(False)
+        self.turn_off_ultrasonic_safety(False)
+        self.enable_line_detector('front', False)
+        self.enable_line_detector('back', False)
+        self.enable_apriltag_detector(False)
 
-
-    def resetHighCurrent(self):
+    def reset_high_current(self):
         self.high_motor_pickup_current = False
         self.high_motor_drop_current = False
 
-
-    def laserScanCB(self, msg: LaserScan):
+    def laser_scan_callback(self, msg: LaserScan):
         self.left_range = min(msg.ranges[80:100]) 
         self.right_range = min(msg.ranges[1171:1191])
 
+    def slider_sensor_state_callback(self, msg: SliderSensorStamped):
+        self.slider_sensor_state = msg.sensor_state.state
 
-    def sliderSensorStateCB(self, msg: CheckerSensorStateStamped):
-        self.slider_sensor_state = msg.sensor_state.data
+    def protected_field_callback(self, msg: Bool):
+        self.is_obstacle_detected_ = msg.data
 
+    def pause_callback(self, msg: Bool):
+        self.is_pausing_ = msg.data 
 
-    def protectedFieldCB(self, msg: Bool):
-        self.obstacle_status = msg.data
-
-
-    def pauseAMRCB(self, msg: Bool):
-        self.is_pause = msg.data 
-
-
-    def cartSensorStateCB(self, msg: CheckerSensorStateStamped):
-        self.cart_sensor_state = msg.sensor_state.data
+    def cart_sensor_state_callback(self, msg: SliderSensorStamped):
+        self.cart_sensor_state = msg.sensor_state.state
     
+    def turn_off_back_safety(self, signal):
+        self.turn_off_back_safety_pub_.publish(signal)
 
-    def turnOffBackLaserSafety(self, signal):
-        self.pub_turn_off_back_safety.publish(signal)
+    def turn_off_front_safety(self, signal):
+        self.turn_off_front_safety_pub_.publish(signal)
 
-    def turnOffFrontLaserSafety(self, signal):
-        self.pub_turn_off_front_safety.publish(signal)
+    def turn_off_ultrasonic_safety(self, signal):
+        self.turn_off_ultrasonic_safety_pub_.publish(signal)
 
-    def turnOffUltrasonicSafety(self, signal):
-        self.pub_turn_off_ultrasonic_safety.publish(signal)
-    
+    def brake(self, signal):
+        self.cmd_brake_pub_.publish(signal)                                                                                                                                                                                                                                                                                                                                                                                                            
 
-    def turnOnBrake(self, signal):
-        self.pub_cmd_brake.publish(signal)
-
-
-    def onOffBrake(self):
-        self.turnOnBrake(True)
-        rospy.sleep(0.5)
-        self.turnOnBrake(False)                                                                                                                                                                                                                                                                                                                                                                                                                                                             
-
-
-    def sliderCommand(self, signal):
+    def pub_slider_cmd(self, signal):
         """
         `signal = 1`: Slider go out
         `signal = 2`: Slider go in
@@ -527,16 +493,13 @@ class AutoDockServer:
         msg = "OUT" if signal == 1 else "IN"
         rospy.loginfo(f"AutoDockServer: PUBLISHING SLIDER MOTOR GO {msg}!")
 
-        self.pub_cmd_slider.publish(signal)
-    
+        self.cmd_slider_pub_.publish(signal)
 
-    def pickupCurrentStateCB(self, msg: Bool):
+    def pickup_current_callback(self, msg: Bool):
         self.high_motor_pickup_current = msg.data
 
-
-    def dropCurrentStateCB(self, msg: Bool):
+    def dropoff_current_callback(self, msg: Bool):
         self.high_motor_drop_current = msg.data
-
 
     def start(self) -> bool:
         """
@@ -548,7 +511,7 @@ class AutoDockServer:
                       "Do overload the start() function")
         return False
 
-    def setState(self, state: DockState, printout=""):
+    def set_state(self, state: DockState, printout=""):
         """
         set state of the auto dock server
         :param state:       Current utils.DockState
@@ -570,11 +533,11 @@ class AutoDockServer:
             self.autodock_action.publish_feedback(self.feedback_msg)
 
     
-    def printOutSuccess(self, printout=""):
+    def printout_success(self, printout=""):
         rospy.loginfo(f"AutoDockServer: State: [{DockState.to_string(self.dock_state)}] | {printout}")
 
     
-    def printOutError(self, printout=""):
+    def printout_error(self, printout=""):
         rospy.logerr(f"AutoDockServer: State: [{DockState.to_string(self.dock_state)}] | {printout}")
 
     
@@ -582,11 +545,11 @@ class AutoDockServer:
         """
         Check if not dectect the dock frame, will be retry
         """
-        self.setState(DockState.RETRY, "AutoDockServer: Retrying auto docking...!")
+        self.set_state(DockState.RETRY, "AutoDockServer: Retrying auto docking...!")
 
         counter = 1
         while not rospy.is_shutdown():
-            if self.doPause():
+            if self.do_pause():
                 pass
             else:
                 dock_tf = self.get_tf(dock_tf_name)
@@ -601,38 +564,38 @@ class AutoDockServer:
             rospy.Rate(5).sleep()
 
 
-    def checkCancel(self) -> bool:
+    def check_cancel(self) -> bool:
         """
         Check if to cancel this docking action. This will happen if a
         preempt is requested during server mode. or if a timeout is reached.
         :return : true if cancel is requested. false as default
         """
         if self.run_server and self.autodock_action.is_preempt_requested():
-            self.setState(DockState.CANCEL, 'AutoDockServer: Preempted Requested!')
+            self.set_state(DockState.CANCEL, 'AutoDockServer: Preempted Requested!')
             return True
 
         # check if dock_timeout reaches
         if (rospy.Time.now() - self.start_time).secs > self.time_out_remain:
             rospy.logerr('Timeout reaches!')
-            self.setState(self.dock_state, "AutoDockServer: Reach Timeout")
+            self.set_state(self.dock_state, "AutoDockServer: Reach Timeout")
             return True
         return False
     
 
-    def doPause(self):
-        if (self.is_pause or self.obstacle_status):
+    def do_pause(self):
+        if (self.is_pausing_ or self.is_obstacle_detected_):
             if (not self.pause_flag):
-                self.setState(self.dock_state, "AutoDockServer: Pause Requested!")
+                self.set_state(self.dock_state, "AutoDockServer: Pause Requested!")
                 self.pause_flag = True
                 self.time_out_remain -= (rospy.Time.now() - self.start_time).secs
                 self.start_time = rospy.Time.now()
 
         else:
             self.pause_flag = False
-        return (self.is_pause or self.obstacle_status)
+        return (self.is_pausing_ or self.is_obstacle_detected_)
 
 
-    def setSpeed(self, linear_vel=0.0, angular_vel=0.0):
+    def publish_velocity(self, linear_vel=0.0, angular_vel=0.0):
         """
         Command the robot to move, default param is STOP!
         """
@@ -640,17 +603,13 @@ class AutoDockServer:
         msg.linear.x = linear_vel
         msg.angular.z = angular_vel
 
-        if (msg.linear.x > self.cfg.linear_vel_range[1]):
-            msg.linear.x = self.cfg.linear_vel_range[1]
-        elif(msg.linear.x < self.cfg.linear_vel_range[0]):
-            msg.linear.x = self.cfg.linear_vel_range[0]
-
-        if (msg.angular.x > self.cfg.angular_vel_range[1]):
-            msg.angular.x = self.cfg.angular_vel_range[1]
-        elif(msg.angular.x < self.cfg.angular_vel_range[0]):
-            msg.angular.x = self.cfg.angular_vel_range[0]
-
-        self.pub_cmd_vel.publish(msg)
+        msg.linear.x  = utils.clamp(msg.linear.x,
+                                    self.cfg.linear_vel_range[0],
+                                    self.cfg.linear_vel_range[1])
+        msg.angular.x = utils.clamp(msg.angular.x,
+                                    self.cfg.angular_vel_range[0],
+                                    self.cfg.angular_vel_range[1])
+        self.cmd_vel_pub_.publish(msg)
 
     
     def get_tf(self,
@@ -728,7 +687,7 @@ class AutoDockServer:
             return None
 
 
-    def retryWithHighMotorCurrent(self, forward, times=0, limit=None) ->bool:
+    def retry_if_high_current(self, forward, times=0, limit=None) ->bool:
         """
         Move robot forward when catch high motor current
         `forward`: How far for moving robot
@@ -737,19 +696,19 @@ class AutoDockServer:
         """
         if times == limit:
             rospy.logerr(f"AutoDockServer: The times of high current exceed {limit}!")
-            self.pub_error.publish(1)
+            self.error_pub_.publish(1)
             return False
         
-        self.setState(self.dock_state, f"AutoDockServer: Move with encoder {forward}m because high motor current!")
-        return (self.moveWithOdom(self.cfg.min_linear_vel,self.cfg.max_linear_vel_predock, forward))
+        self.set_state(self.dock_state, f"AutoDockServer: Move with encoder {forward}m because high motor current!")
+        return (self.move_with_odom(self.cfg.min_linear_vel,self.cfg.max_linear_vel_predock, forward))
 
 
-    def moveWithOdom(self, min_speed: float, max_speed: float ,forward: float) -> bool:
+    def move_with_odom(self, min_speed: float, max_speed: float ,forward: float) -> bool:
         """
         Move robot in linear motion with Odom. Blocking function
         :return : success
         """
-        self.setState(self.dock_state, f"Move robot: {forward:.2f}m!")
+        self.set_state(self.dock_state, f"Move robot: {forward:.2f}m!")
 
         _initial_tf = self.get_odom()
         if _initial_tf is None:
@@ -761,10 +720,10 @@ class AutoDockServer:
         # second mat
         prev_time = rospy.Time.now()
         while not rospy.is_shutdown():
-            if self.checkCancel():
+            if self.check_cancel():
                 return False
 
-            elif self.doPause():
+            elif self.do_pause():
                 pass
 
             else:
@@ -772,9 +731,9 @@ class AutoDockServer:
                     self.dock_state == DockState.LAST_MILE):
                     if (self.high_motor_drop_current or
                         self.high_motor_pickup_current):
-                        self.resetHighCurrent()
-                        self.setSpeed()
-                        if not self.retryWithHighMotorCurrent(0.4):
+                        self.reset_high_current()
+                        self.publish_velocity()
+                        if not self.retry_if_high_current(0.4):
                             return False
                         return True
 
@@ -785,7 +744,7 @@ class AutoDockServer:
                 dx, dy, dyaw = utils.compute_tf_diff(_curr_tf, _goal_tf)
 
                 if abs(dx) < self.cfg.stop_trans_diff:
-                    self.setSpeed()
+                    self.publish_velocity()
                     rospy.loginfo("AutoDockServer: Done with move robot")
                     return True
 
@@ -796,20 +755,20 @@ class AutoDockServer:
                 ang_vel = utils.sat_proportional_filter(dyaw, abs_max=self.cfg.min_angular_vel, factor=0.2)
                 l_vel   = utils.bin_filter(dx, l_vel_pid)
 
-                self.setSpeed(linear_vel=l_vel, angular_vel=ang_vel)
+                self.publish_velocity(linear_vel=l_vel, angular_vel=ang_vel)
                 prev_time = time_now
             self.rate.sleep()
         exit(0)
 
     
-    def rotateWithOdom(self, min_angular_vel: float, max_angular_vel: float, rotate: float) -> bool:
+    def rotate_with_odom(self, min_angular_vel: float, max_angular_vel: float, rotate: float) -> bool:
         """
         Spot Rotate the robot with odom. Blocking function
         :return : success
         `rotate`: How many degrees for rotating
         `v_w`: angular velocity
         """
-        self.setState(self.dock_state, f"Turn robot: {rotate:.2f} rad!")
+        self.set_state(self.dock_state, f"Turn robot: {rotate:.2f} rad!")
 
         _initial_tf = self.get_odom()
         if _initial_tf is None:
@@ -822,10 +781,10 @@ class AutoDockServer:
         prev_time = rospy.Time.now()
         while not rospy.is_shutdown():
 
-            if self.checkCancel():
+            if self.check_cancel():
                 return False
 
-            elif self.doPause():
+            elif self.do_pause():
                 pass
             
             else:
@@ -833,8 +792,8 @@ class AutoDockServer:
                     self.dock_state == DockState.LAST_MILE):
                     if (self.high_motor_drop_current or
                         self.high_motor_pickup_current):
-                        self.resetHighCurrent()
-                        self.setSpeed()
+                        self.reset_high_current()
+                        self.publish_velocity()
                         return False
                     
                 _curr_tf = self.get_odom()
@@ -844,7 +803,7 @@ class AutoDockServer:
                 dx, dy, dyaw = utils.compute_tf_diff(_curr_tf, _goal_tf)
 
                 if abs(dyaw) < self.cfg.stop_yaw_diff:
-                    self.setSpeed()
+                    self.publish_velocity()
                     rospy.loginfo("AutoDockServer: Done with rotate robot")
                     return True
                 
@@ -854,13 +813,13 @@ class AutoDockServer:
                 sign = 1 if rotate > 0 else -1
                 angular_vel = sign*angular_vel_pid
                 
-                self.setSpeed(angular_vel=angular_vel)
+                self.publish_velocity(angular_vel=angular_vel)
                 prev_time = time_now
             self.rate.sleep()
         exit(0)
 
 
-    def autoDockActionCB(self, goal: AutoDockingGoal):
+    def auto_docking_callback(self, goal: AutoDockingGoal):
         self.start_time = rospy.Time.now()
         self.time_out_remain = self.cfg.dock_timeout
         _result = AutoDockingResult()
@@ -878,17 +837,17 @@ class AutoDockServer:
             _result.status = f"AutoDockServer: Cancel during [{_prev_state}], " \
                              f"with status: {self.feedback_msg.status}"
             self.autodock_action.set_preempted(_result)
-            self.setState(DockState.IDLE, "Dock Action is canceled")
+            self.set_state(DockState.IDLE, "Dock Action is canceled")
 
         else:
             _result.is_success = False
             _result.status = f"AutoDockServer: Failed during [{_prev_state}], " \
                              f"with status: {self.feedback_msg.status}"
             self.autodock_action.set_aborted(_result)
-            self.setState(DockState.IDLE, "Failed execute Dock Action")
+            self.set_state(DockState.IDLE, "Failed execute Dock Action")
 
 
-    def timerCB(self, timer):
+    def timer_callback(self, timer):
         # This is mainly for debuging
         marker = Marker()
         marker.header.stamp = rospy.Time.now()

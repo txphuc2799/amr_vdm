@@ -22,8 +22,8 @@ add_message_files(
     WheelsCmdStamped.msg
     PID.msg
     PIDStamped.msg
-    CheckerSensorState.msg
-    CheckerSensorStateStamped.msg
+    SliderSensor.msg
+    SliderSensorStamped.msg
     SafetyStatus.msg
     SafetyStatusStamped.msg
     SafetyZone.msg

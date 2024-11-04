@@ -45,9 +45,6 @@ class PID:
         derivative = (error - self.prev_error) / dt_ms
         output = self.kp * error + self.ki * self.integral + self.kd * derivative
         self.prev_error = error
-        # print('setpoint: ', setpoint)
-        # print('feedback_value: ', feedback_value)
-        # print('output: ', output)
         if (self.out_min != 0 or self.out_max != 0):
             return self.clamp(abs(output), self.out_min, self.out_max)
         return output

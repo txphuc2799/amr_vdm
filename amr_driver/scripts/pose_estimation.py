@@ -30,9 +30,9 @@ class PoseEstimation():
         self.pub_is_initial_pose = rospy.Publisher("is_intialpose", Bool, queue_size=5)
 
         # Subscribers:
-        rospy.Subscriber("measured_joint_states", JointState, self.jointStateCb)
-        rospy.Subscriber("pose_estimation", Int16, self.poseEstimationCb)
-        rospy.Subscriber("/initialpose", PoseWithCovarianceStamped, self.initialPoseCb)
+        rospy.Subscriber("measured_joint_states", JointState, self.joint_state_callback)
+        rospy.Subscriber("pose_estimation", Int16, self.pose_estimation_callback)
+        rospy.Subscriber("/initialpose", PoseWithCovarianceStamped, self.initial_pose_callback)
 
         # Variables:
         self.state_flag = False
@@ -41,10 +41,10 @@ class PoseEstimation():
         self.flag = False
 
         # Fixed positions:
-        self.fixed_position = self.yamlPose("tp2_fixed_positipon")
+        self.fixed_position = self.get_pose_from_yaml("tp2_fixed_positipon")
 
     
-    def get2DPose(self):
+    def get_2d_pose(self):
         """
         Take 2D Pose
         """
@@ -67,7 +67,7 @@ class PoseEstimation():
             rospy.logwarn(f"PoseEstimation: Failed lookup: {self.base_frame_id}, from {self.frame_id}")
             return None
     
-    def yamlPose(self, position_name: str):
+    def get_pose_from_yaml(self, position_name: str):
         """
         Get position from yaml file
         """
@@ -83,7 +83,7 @@ class PoseEstimation():
             return float_position_list
 
     
-    def initialPoseCb(self, msg: PoseWithCovarianceStamped):
+    def initial_pose_callback(self, msg: PoseWithCovarianceStamped):
         pose = msg.pose.pose
 
         self.pose.position.x = pose.position.x
@@ -92,19 +92,19 @@ class PoseEstimation():
         self.pose.orientation.w = pose.orientation.w
 
     
-    def setByHand(self, pose):
+    def set_by_hand(self, pose):
         self.pose.position.x = pose[0]
         self.pose.position.y = pose[1]
         self.pose.orientation.z = pose[2]
         self.pose.orientation.w = pose[3]
 
-        self.setPoseEstimation(self.pose) 
+        self.set_pose_estimation(self.pose) 
 
 
-    def poseEstimationCb(self, msg: Int16):
+    def pose_estimation_callback(self, msg: Int16):
         if msg.data != 1:
             try:
-                self.setByHand(self.fixed_position[msg.data-2])
+                self.set_by_hand(self.fixed_position[msg.data-2])
                 rospy.loginfo(f"PoseEstimation: Set position {msg.data} successfully!")
             except:
                 rospy.logerr("Position is empty, try again...!")
@@ -116,7 +116,7 @@ class PoseEstimation():
             self.flag = True
     
 
-    def setPoseEstimation(self, pose: Pose):
+    def set_pose_estimation(self, pose: Pose):
         msg = PoseWithCovarianceStamped()
         msg.pose.pose = pose
         msg.header.frame_id = self.frame_id
@@ -125,14 +125,14 @@ class PoseEstimation():
         rospy.loginfo("PoseEstimation: Published position from initialpose topic!")
     
 
-    def jointStateCb(self, msg: JointState):
+    def joint_state_callback(self, msg: JointState):
         v_left  = msg.velocity[0]
         v_right = msg.velocity[1]
 
         if (abs(v_left) <= 0.01 and abs(v_right) <= 0.01):
             if self.flag:
                 if not self.state_flag:
-                    pose = self.get2DPose()
+                    pose = self.get_2d_pose()
 
                     self.pose.position.x = pose[0]
                     self.pose.position.y = pose[1]
@@ -140,11 +140,11 @@ class PoseEstimation():
                     self.pose.orientation.w = pose[3]
 
                     rospy.logdebug("PoseEstimation: Take the robot's current position")
-                    self.setPoseEstimation(self.pose)
+                    self.set_pose_estimation(self.pose)
                     self.state_flag = True
                 
                 if self.timer >= 100:
-                    self.setPoseEstimation(self.pose)
+                    self.set_pose_estimation(self.pose)
                     self.timer = 0
                 
                 else:
