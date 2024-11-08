@@ -120,7 +120,7 @@ class AutoDockStateMachine(AutoDockServer):
                         if wait_for_util_tag_appear == 5:
                             if self.get_tf(self.cfg.first_frame) is None:
                                 self.enable_apriltag_detector(False)
-                                self.enable_line_detector(False)
+                                self.enable_line_detector("back", False)
                                 return False
                             else:
                                 self.first_name = self.cfg.first_frame
