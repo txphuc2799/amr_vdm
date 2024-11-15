@@ -2,13 +2,12 @@ base_local_planner: rotation_shim_controller/RotationShimController
 RotationShimController:
   # primary_controller: dwb_controller/DWBController
   primary_controller: vector_pursuit_controller/VectorPursuitController
-  running_topic: /amr/state_runonce_nav
   controller_frequency: 20.0
   transform_tolerance: 0.5
   simulate_ahead_time: 1.0
-  angular_dist_threshold: 10.0 # in degree [Angle threshold for switch to primary controller]
+  angular_dist_threshold: 0.17 # in degree [Angle threshold for switch to primary controller]
   forward_sampling_distance: 0.5
-  goal_angular_vel_scaling_angle: 15.0
+  goal_angular_vel_scaling_angle: 0.26
   goal_angle_scaling_factor: 0.8
   rotate_to_goal_max_angular_vel: 0.4
   rotate_to_goal_min_angular_vel: 0.1
@@ -16,7 +15,6 @@ RotationShimController:
   # Vector Pure Pursuit
   VectorPursuitController:
     odom_topic: /amr/odometry/filtered
-    running_topic: /amr/state_runonce_nav
     control_frequency: 20.0
     k: 6.0
     desired_linear_vel: 0.7
@@ -40,8 +38,8 @@ RotationShimController:
     inflation_cost_scaling_factor: 3.0
     use_rotate_to_heading: true
     rotate_to_heading_min_angle: 0.55
-    path_angular_vel_scaling_angle: 15.0
-    path_angle_scaling_factor: 0.8
+    path_angular_vel_scaling_angle: 0.26
+    path_angle_scaling_factor: 1.3
     rotate_to_path_max_angular_vel: 0.3
     rotate_to_path_min_angular_vel: 0.1
     allow_reversing: false
@@ -51,7 +49,7 @@ RotationShimController:
     max_robot_pose_search_dist: 10.0
     use_interpolation: true
     use_heading_from_path: false
-    goal_angular_vel_scaling_angle: 15.0
+    goal_angular_vel_scaling_angle: 0.26
     goal_angle_scaling_factor: 0.8
     rotate_to_goal_max_angular_vel: 0.4
     rotate_to_goal_min_angular_vel: 0.1
@@ -88,7 +86,7 @@ RotationShimController:
     stateful: True
     GoalChecker:
       controller_frequency: 20.0
-      goal_angular_vel_scaling_angle: 15.0
+      goal_angular_vel_scaling_angle: 0.26
       goal_angle_scaling_factor: 0.8
       rotate_to_goal_max_angular_vel: 0.4
       rotate_to_goal_min_angular_vel: 0.1
