@@ -13,11 +13,12 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from amr_autodocking.msg import AutoDockingAction, AutoDockingGoal
 from nav_msgs.srv import LoadMap, LoadMapResponse
 from std_srvs.srv import Empty, SetBool
-from std_msgs.msg import Bool, Int16, Float64, Int16MultiArray
+from std_msgs.msg import Bool, Int16
 from geometry_msgs.msg import Twist
 from tf import transformations as ts
 from nav_msgs.msg import Odometry
 from typing import Tuple
+from amr_msgs.msg import StartState
 
 Pose2D = Tuple[float, float, float]
 
@@ -142,14 +143,14 @@ class AutoNavigation():
         INFO("AutoNavigation: Connected to /back_camera/apriltag_ros/enable_detector service.")
         
         # Variables:
-        self.start_amr = 0
+        self.start_state = StartState()
+        self.mode = AutoDockingGoal()
+        self.tag_ids_55 = [0,2,3]
         self.detect_obstacle_ = False
         self.is_stopped_ = False
         self.is_pausing_  = False
-        self.is_running_ = False
-        self.dock_name = 0
         self.error = 2   #[0] - Loi cap hang, [1] - Loi lay hang, [2] - Loi vi tri
-        self.prev_state = 0
+        self.prev_state = None
 
         # Waypoints:
         self.line_55_clr_goal = self.get_pose_from_yaml("line_55_clr_goal")
@@ -175,10 +176,9 @@ class AutoNavigation():
         self._pub_mode_error = rospy.Publisher("error_mode", Int16, queue_size=5)
         self.pub_turn_off_front_safety = rospy.Publisher("turn_off_front_safety", Bool,queue_size=5)
         self.pub_turn_off_ultrasonic_safety = rospy.Publisher("turn_off_ultrasonic_safety", Bool,queue_size=5)
-        self.run_controller_pub_ = rospy.Publisher("/run_rs_controller", Bool, queue_size=5)
 
         # Subscribers:
-        rospy.Subscriber("START_AMR", Int16MultiArray, self.run)
+        rospy.Subscriber("START_AMR", StartState, self.run)
         rospy.Subscriber("PAUSE_AMR", Bool, self.pause_callback)
         rospy.Subscriber("CANCEL_AMR", Bool, self.cancel_callback)
         rospy.Subscriber("emergency_stop", Bool, self.emergency_stop_callback)
@@ -222,7 +222,6 @@ class AutoNavigation():
     def reset(self):
         self.error = 2
         self.is_stopped_ = False
-        self.is_running_ = False
         self.runonce(False)
         self.turn_off_brake(True)
     
@@ -500,12 +499,6 @@ class AutoNavigation():
 
     
     def navigate_to_goal(self, pose):
-        """
-        Navigating robot to a goal on map
-        `footprint`: `1` - default footprint (small) | `0` - big footprint
-        """
-        self.run_controller_pub_.publish(True)
-
         poses = Pose()
         poses.position.x = float(pose[0])
         poses.position.y = float(pose[1])
@@ -531,11 +524,6 @@ class AutoNavigation():
 
 
     def navigate_through_goal(self, poses):
-        """
-        Navigating robot through goal list on map
-        """
-        self.run_controller_pub_.publish(True)
-
         self.waypoints.clear()
 
         pose_arr = np.array(poses)
@@ -665,20 +653,15 @@ class AutoNavigation():
             ERROR("AutoNavigation: Service call failed: %s"%e)
 
     
-    def send_auto_docking(self, dock_name:int=None, enable_Apriltag_detector:bool=None):
-        """
-        Auto docking action
-        `dock_name`: L55 - `1`, `3`, `5` or `7` | L56 - `2`, `4`, `6` or `8`
-        `enable_Apriltag_detector`: `True` - Enable | `False` - Disable (Default)
-        """
-        if dock_name is not None:
-            self.pub_dock_name.publish(dock_name)
-        
-        if enable_Apriltag_detector is not None:
-            self.enable_apriltag_detector(enable_Apriltag_detector)
-
+    def send_auto_docking(self, mode:int, dock_name:str, tag_ids=[],
+                          angle_to_dock=0, rotate_orientation=0, distance_go_out=None):
         goal = AutoDockingGoal()
-        goal.start_autodock = True
+        goal.mode = mode
+        goal.dock_name = dock_name
+        goal.tag_ids = tag_ids
+        goal.angle_to_dock = angle_to_dock
+        goal.rotate_orientation = rotate_orientation
+        goal.distance_go_out = distance_go_out
 
         self.autodock_client.send_goal(goal)
         self.autodock_client.wait_for_result()
@@ -692,121 +675,37 @@ class AutoNavigation():
             self.enable_apriltag_detector(False)
             return False
 
-    def navigate_to_charger(self):
-        WARN("AutoNavigation: Battery is low, returning the charger...")
-
-        if not self.navigate_through_goal(self.get_pose_from_yaml("charging_waypoints")):
-            return False
-        
-        if not self.send_auto_docking():
-            return False
-        
-        return True
-
 
     #===============> LINE 55 <================#
-    def pickup_at_cleaning_room_line_55(self):
-        """
-        AMR picks up the line 55 motor order in the cleaning room
-        """
+    def clr55_pickup(self):
         if not self.navigate_to_goal(self.line_55_clr_goal):
             return False
-        if not self.send_auto_docking(1, True):
+        if not self.send_auto_docking(self.mode.MODE_PICKUP, "clr55_pickup", self.tag_ids_55, distance_go_out=0.8):
             self.error = 1
             return False
         return True
     
-    def deliver_to_line_55(self):
-        """
-        AMR transports of motor to line 55 after cleaned
-        """
+    def line55_dropoff(self):
         if not self.navigate_through_goal(self.waypoint_clr_to_line_55):
             return False
-        if not self.send_auto_docking(3):
+        if not self.send_auto_docking(self.mode.MODE_DROPOFF, "line55_dropoff", distance_go_out=0.6):
             self.error = 0
             return False
         return True
 
-    def pickup_at_line_55(self):
-        """
-        AMR picks up the unclean motor at line 55
-        """
+    def line55_pickup(self):
         if not self.navigate_to_goal(self.line_55_pickup_goal):
             return False
-        if not self.send_auto_docking(5, True):
+        if not self.send_auto_docking(self.mode.MODE_PICKUP, "line55_pickup", self.tag_ids_55, distance_go_out=0.8):
             self.error = 1
             return False
         return True
 
-    def deliver_to_cleaning_room_line_55(self):
-        """
-        AMR transports the unclean motor back to the cleaning room
-        """
+    def clr55_dropoff(self):
         if not self.navigate_through_goal(self.waypoint_line_55_back_to_clr):
             return False
-        if not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, 182*math.pi/180):
-            return False
-        if not self.send_auto_docking(7):
-            self.error = 0
-            return False
-        return True
-    
-
-    #===============> LINE 56 <================#
-    def pickUpLine56ClrOrder(self):
-        """
-        AMR picks up the line 56 motor order in the cleaning room
-        """
-        if not self.navigate_to_goal(self.line_56_clr_goal):
-            return False
-        if not self.send_auto_docking(2, True):
-            self.error = 1
-            return False
-        return True
-
-    def deliverToLine56(self):
-        """
-        AMR transports of motor to line 56 after cleaned
-        """
-        if not self.navigate_through_goal(self.waypoint_clr_to_line_56):
-            return False
-        if not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, -90*math.pi/180):
-            return False
-        if not self.send_auto_docking(4):
-            self.error = 0
-            return False
-        return True
-
-    def pickUpOrderLine56(self):
-        """
-        AMR picks up the unclean motor at line 56
-        """
-        if not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, 90*math.pi/180):
-            return False
-        if not self.move_with_odom(self.params.min_linear_vel, self.params.max_linear_vel, 1.5):
-            return False
-        if not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, -90*math.pi/180):
-            return False
-        if not self.send_auto_docking(6, True):
-            self.error = 1
-            return False
-        if not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, -60*math.pi/180):
-            return False
-        if not self.move_with_odom((self.params.min_linear_vel, self.params.max_linear_vel - 0.15), -0.3):
-            return False
-        if not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, -30*math.pi/180):
-            return False
-        return True
-
-    def deliverToClrLine56(self):
-        """
-        AMR transports the unclean motor back to the cleaning room
-        """
-        if not self.navigate_through_goal(self.waypoint_line_56_back_to_clr):
-            return False
-        if not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, 92*math.pi/180):
-            return False
-        if not self.send_auto_docking(8):
+        if not self.send_auto_docking(self.mode.MODE_DROPOFF, "clr55_dropoff", angle_to_dock=92,
+                                      rotate_orientation=2, distance_go_out=1.0):
             self.error = 0
             return False
         return True
@@ -817,44 +716,41 @@ class AutoNavigation():
         if not self.navigate_to_goal(self.charger_goal_):
             self.error = 2
             return False
-        if not self.send_auto_docking(57):
+        if not self.send_auto_docking(self.mode.MODE_CHARGE, "charger_tp2"):
             self.error = 2
             return False
         return True
 
 
     #===============> MAIN RUN <===============#
-    def line_55_navigation(self, signal):
-        if signal == 1:
+    def line_55_navigation(self, state):
+        if state == self.start_state.CLR_PICKUP:
             if (
-                self.pickup_at_cleaning_room_line_55() and
-                self.deliver_to_line_55() and
-                self.pickup_at_line_55() and
-                self.deliver_to_cleaning_room_line_55()
+                self.clr55_pickup() and
+                self.line55_dropoff() and
+                self.line55_pickup() and
+                self.clr55_dropoff()
             ):  return True
 
-        elif signal == 2:
-            if self.deliver_to_cleaning_room_line_55(): return True   
+        elif state == self.start_state.CLR_DROPOFF:
+            if self.clr55_dropoff(): return True   
 
-        else:
+        elif state == self.start_state.LINE_DROPOFF:
             if (
-                self.deliver_to_line_55() and
-                self.pickup_at_line_55() and
-                self.deliver_to_cleaning_room_line_55()
+                self.line55_dropoff() and
+                self.line55_pickup() and
+                self.clr55_dropoff()
             ):  return True
         
         return False
 
     
-    def run(self, signal: Int16MultiArray):
-        self.start_amr = signal.data
-        self.is_running_ = True
+    def run(self, state: StartState):
         self.runonce(True)
         self.turn_off_brake(False)
 
-        if self.prev_state == 57:
-            if (not self.move_with_odom(self.params.min_linear_vel, self.params.max_linear_vel, -1.0)
-                and not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, 90*math.pi/180)):
+        if self.prev_state == self.start_state.CHARGER:
+            if (not self.move_with_odom(self.params.min_linear_vel, self.params.max_linear_vel, -1.0)):
                 ERROR("AutoNavigation: Navigation is failed!")
                 self.error = 2
                 self.publish_mode_error(self.error)
@@ -863,16 +759,16 @@ class AutoNavigation():
             self.pub_turn_off_front_safety.publish(False)
             self.pub_turn_off_ultrasonic_safety.publish(False)
 
-        if self.start_amr[0] == 55:
-            self.prev_state = 55
-            if not self.line_55_navigation(self.start_amr[1]):
+        if state.start_state[0] == self.start_state.LINE_55:
+            self.prev_state = self.start_state.LINE_55
+            if not self.line_55_navigation(state.start_state[1]):
                 ERROR("AutoNavigation: Navigation is failed!")
                 self.publish_mode_error(self.error)
                 self.reset()
                 return False
         
-        elif self.start_amr[0] == 57:
-            self.prev_state = 57
+        elif state.start_state[0] == self.start_state.CHARGER:
+            self.prev_state = self.start_state.CHARGER
             if not self.navigate_to_charger():
                 ERROR("AutoNavigation: Navigation is failed!")
                 self.publish_mode_error(self.error)

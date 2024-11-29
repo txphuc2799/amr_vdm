@@ -1,7 +1,22 @@
 ######################################################################
 # GOAL
 ## docking waypoint heading to the charging station
-bool start_autodock
+# Mode docking
+uint8 mode
+uint8 MODE_IDLE = 0
+uint8 MODE_CHARGE = 1
+uint8 MODE_PICKUP = 2
+uint8 MODE_DROPOFF = 3
+uint8 MODE_UNDOCK = 4
+
+string dock_name
+uint8[] tag_ids
+int16 angle_to_dock
+float32 distance_go_out
+
+# 1 - Counter clockwise, 2 - Clockwise
+int16 rotate_orientation 
+
 ---
 ######################################################################
 # RESULT

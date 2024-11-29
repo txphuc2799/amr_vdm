@@ -34,7 +34,6 @@ from amr_msgs.msg import SliderSensorStamped
 from tf.transformations import euler_from_quaternion
 from sensor_msgs.msg import LaserScan
 from std_srvs.srv import SetBool
-from amr_msgs.msg import RobotState
 from amr_autodocking.pid import PID
 
 
@@ -53,10 +52,11 @@ class AutodockConfig:
 
     # [Frames]
     base_link = "base_link"
-    charger_link = "charger_frame"
+    charger_frame = "charger_frame"
     first_frame = "first_frame"
     last_frame = "last_frame"
     parallel_frame = "parallel_frame"
+    custom_dock_name = None
    
     # [Goal threshold]
     stop_yaw_diff   = 0.05              # radian
@@ -132,14 +132,9 @@ class AutoDockServer:
         self.pause_flag = False
         self.slider_sensor_state = [0,0]
         self.cart_sensor_state = (0,0)
-        self.tf_tag_name = ""
-        self.msg = ""
         self.tag_frame = ""
-        self.first_name = ""
-        self.dock_name = 0
         self.time_out_remain = self.cfg.dock_timeout
-        self.goal = AutoDockingGoal()
-        self.robot_state = RobotState()
+        self.mode = AutoDockingGoal()
         self.dock_state = DockState.IDLE
         self.start_time = rospy.Time.now()
         self.rate = rospy.Rate(self.cfg.controller_frequency)
@@ -204,7 +199,6 @@ class AutoDockServer:
         rospy.Subscriber("slider_sensor_state", SliderSensorStamped, self.slider_sensor_state_callback)
         rospy.Subscriber("status_protected_field", Bool, self.protected_field_callback)
         rospy.Subscriber("back_scan_rep177", LaserScan, self.laser_scan_callback)
-        rospy.Subscriber("dock_name", Int16, self.dock_name_callback)
 
         # Autodock action
         if run_server:
@@ -242,8 +236,10 @@ class AutoDockServer:
     def distance2D(self, x, y):
         return (math.sqrt(pow(x, 2) + pow(y, 2)))
     
-    def dock_name_callback(self, msg:Int16):
-        self.dock_name = msg.data 
+    def rotate_to_dock(self, angle_to_dock):
+        if angle_to_dock != 0:
+            return self.rotate_with_odom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, angle_to_dock*math.pi/180)
+        return True
 
     def update_line_extraction_params(self, signal):
         """
@@ -277,22 +273,20 @@ class AutoDockServer:
         # Create a delay
         rospy.sleep(0.2)
 
-    def check_laser_frame(self, laser_tf=None, tag_tf=None, laser_tf_name=None, tag_tf_name=None):
-        """
-        Check laser frame is close with tag frame
-        """
-        if (laser_tf_name is not None and tag_tf_name is not None):
-            laser_tf_ = self.get_tf(laser_tf_name)
-            tag_tf_ = self.get_tf(tag_tf_name)
+    def check_dock_frame(self, laser_frame, tag_frame):
+        laser_tf = self.get_tf(laser_frame)
+        tag_tf = self.get_tf(tag_frame)
+
+        if laser_tf is None:
+            return False
         
-        elif (laser_tf is not None and tag_tf is not None):
-            laser_tf_ = laser_tf
-            tag_tf_ = tag_tf
-
-        dock_x, dock_y, dock_yaw = utils.get_2d_pose(laser_tf_)
-        tag_x, tag_y, tag_yaw    = utils.get_2d_pose(tag_tf_)
-
-        return (self.distance2D(dock_x - tag_x, dock_y - tag_y) <= 0.04)
+        if (laser_tf is not None and tag_tf is not None):
+            x, y, yaw    = utils.get_2d_pose(laser_tf)
+            x1, y1, yaw1 = utils.get_2d_pose(tag_tf)
+        
+            return (self.distance2D(x - x1, y - y1) <= 0.04)
+        
+        return True
 
     def PIDController(self, dis_y):
         error = dis_y - self.last_error
@@ -406,6 +400,22 @@ class AutoDockServer:
                 and self.rotate_with_odom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, -rot_angle)
             )
         
+    def custom_rotation_after_undock(self, dock_name:str)->bool:
+        if dock_name in self.cfg.custom_dock_name:
+            rospy.loginfo("Executing custom rotating dock...")
+            for k in self.cfg.custom_dock_name[dock_name]:
+                for action, value in self.cfg.custom_dock_name[dock_name][k].items():
+                    if action == "rotate":
+                        if not self.rotate_with_odom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, value*math.pi/180):
+                            return False
+                    elif action == "move":
+                        if not self.move_with_odom(self.cfg.min_linear_vel, self.cfg.max_linear_vel, value):
+                            return False
+                    else:
+                        rospy.logerr("Autodock: action key is not properly, available key is 'rotate' or move!")
+                        return False
+        return True
+        
     # def send_goal(self, x, y, theta):
     #     """
     #     Send goal to move_to_pose
@@ -501,7 +511,7 @@ class AutoDockServer:
     def dropoff_current_callback(self, msg: Bool):
         self.high_motor_drop_current = msg.data
 
-    def start(self) -> bool:
+    def start(self, mode, dock_name, tag_ids, angle_to_dock, rotate_orientation, distance_go_out) -> bool:
         """
         Virtual function. This function will be triggered when autodock request
         is requested
@@ -823,7 +833,8 @@ class AutoDockServer:
         self.start_time = rospy.Time.now()
         self.time_out_remain = self.cfg.dock_timeout
         _result = AutoDockingResult()
-        _result.is_success = self.start()
+        _result.is_success = self.start(goal.mode, goal.dock_name, goal.tag_ids,
+                                        goal.angle_to_dock, goal.rotate_orientation, goal.distance_go_out)
         
         _prev_state = DockState.to_string(self.feedback_msg.state)
 

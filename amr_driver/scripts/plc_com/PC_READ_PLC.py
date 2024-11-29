@@ -4,6 +4,7 @@ import rospy
 from std_msgs.msg import Bool, Int16, Int16MultiArray, Empty
 from sensor_msgs.msg import Range
 from amr_msgs.msg import SliderSensorStamped
+from amr_msgs.msg import StartState
 from amr_driver.mcprotocol.type1e import Type1E
 
 
@@ -45,7 +46,7 @@ class PCReadPLC(Type1E):
         # Only Publishers:
         self.pub_left_ultrasonic  = rospy.Publisher("left_ultrasonic/range", Range, queue_size=5)
         self.pub_right_ultrasonic = rospy.Publisher("right_ultrasonic/range", Range, queue_size=5)
-        self.pub_goal_name        = rospy.Publisher("START_AMR", Int16MultiArray, queue_size=5)
+        self.pub_start_state      = rospy.Publisher("START_AMR", StartState, queue_size=5)
         self.pub_cmd_cancel_AMR   = rospy.Publisher("CANCEL_AMR", Bool,queue_size=5)
         self.pub_cmd_pause_AMR    = rospy.Publisher("PAUSE_AMR", Bool, queue_size=5)
         self.pub_cmd_reset_AMR    = rospy.Publisher("RESET_AMR", Empty, queue_size=1)
@@ -71,7 +72,6 @@ class PCReadPLC(Type1E):
         self.drop_current_state = 0
         self.cart_sensor_state = [0,0]
         self.slider_sensor_state = [0,0]
-        self.goal_name = Int16MultiArray()
 
     def initParams(self):
         print(f"NODE: PCReadPLC")
@@ -153,8 +153,27 @@ class PCReadPLC(Type1E):
                     if not bit_array[11]:
                         line_name = self.batchread_wordunits("D502",1)[0]
                         mode_name = self.batchread_wordunits("D500",1)[0]
-                        self.goal_name.data = [line_name,mode_name]
-                        self.pub_goal_name.publish(self.goal_name)
+
+                        state = StartState()
+                        
+                        if line_name == 55:
+                            line_name = state.LINE_55
+                        elif line_name == 56:
+                            line_name = state.LINE_56
+                        elif line_name == 57:
+                            line_name = state.CHARGER
+                        
+                        if mode_name == 1:
+                            mode_name = state.CLR_PICKUP
+                            if line_name == state.CHARGER:
+                                mode_name = state.CHARGING
+                        elif mode_name == 2:
+                            mode_name = state.CLR_DROPOFF
+                        else:
+                            mode_name = state.LINE_DROPOFF
+
+                        state.start_state = [line_name,mode_name]
+                        self.pub_start_state.publish(state)
                         self.START_state = 1
                 else:
                     self.START_state = 0

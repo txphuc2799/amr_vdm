@@ -18,12 +18,12 @@ add_message_files(
     ErrorStamped.msg
     LightMode.msg
     WheelsCmd.msg
-    RobotState.msg
     WheelsCmdStamped.msg
     PID.msg
     PIDStamped.msg
     SliderSensor.msg
     SliderSensorStamped.msg
+    StartState.msg
     SafetyStatus.msg
     SafetyStatusStamped.msg
     SafetyZone.msg

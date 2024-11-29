@@ -102,18 +102,20 @@ class PoseEstimation():
 
 
     def pose_estimation_callback(self, msg: Int16):
-        if msg.data != 1:
-            try:
-                self.set_by_hand(self.fixed_position[msg.data-2])
-                rospy.loginfo(f"PoseEstimation: Set position {msg.data} successfully!")
-            except:
-                rospy.logerr("Position is empty, try again...!")
-                self.pub_is_initial_pose.publish(True)
-                return
-
+        if msg.data == 1:
             self.pub_is_initial_pose.publish(True)
-            rospy.sleep(0.5)
-            self.flag = True
+            return
+        try:
+            self.set_by_hand(self.fixed_position[msg.data-2])
+            rospy.loginfo(f"PoseEstimation: Set position {msg.data} successfully!")
+        except:
+            rospy.logerr("Position is empty, try again...!")
+            self.pub_is_initial_pose.publish(True)
+            return
+
+        self.pub_is_initial_pose.publish(True)
+        rospy.sleep(0.5)
+        self.flag = True
     
 
     def set_pose_estimation(self, pose: Pose):
