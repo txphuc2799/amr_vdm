@@ -1,6 +1,6 @@
 robot_base_frame: base_footprint
 transform_tolerance: 0.4
-obstacle_range: 5.0  
+obstacle_range: 3.0  
 # mark_threshold: 1
 publish_voxel_map: true
 navigation_map:

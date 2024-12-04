@@ -69,8 +69,18 @@ class AutoDockStateMachine(AutoDockServer):
                 assert param_val >= 0, f"[{param_name}] param should be +ve"
         
 
-    def start(self, mode, dock_name, tag_ids, angle_to_dock, rotate_orientation, distance_go_out) -> bool:
+    def start(self, mode, dock_name, tag_ids, angle_to_dock, correction_angle, rotate_type, distance_go_out) -> bool:
         rospy.loginfo(f"AutodockController: Start autodock! Will attempt with {self.cfg.retry_count} retry!")
+        
+        if self.cfg.debug_mode:
+            print(f"Autodock params:")
+            print(f"* dock_name: {dock_name}")
+            print(f"* mode: {mode}")
+            print(f"* tag_ids: {list(tag_ids)}")
+            print(f"* angle_to_dock: {angle_to_dock}")
+            print(f"* correction_angle: {correction_angle}")
+            print(f"* rotate_type: {rotate_type}")
+            print(f"* distance_go_out: {distance_go_out}")
 
         if not self.rotate_to_dock(angle_to_dock):
             return False
@@ -97,18 +107,19 @@ class AutoDockStateMachine(AutoDockServer):
                 while True:
                     try:
                         tag_detections = rospy.wait_for_message("/back_camera/tag_detections",
-                                                                AprilTagDetectionArray, timeout=1.0)
+                                                              AprilTagDetectionArray, timeout=1.0)
                         tag_frame = ""
-                        if (tag_detections is not None):
+                        if tag_detections is not None:
                             tags = tag_detections.detections
-                            if len(tag_ids) != 0:
+                            if len(list(tag_ids)) != 0:
                                 for tag in tags:
-                                    if tag.id[0] in tag_ids:
+                                    if tag.id[0] in list(tag_ids):
                                         tag_frame = f"tag_frame_{tag.id[0]}"
                                 self.tag_frame = tag_frame
                             else:
                                 rospy.logerr("No tag_ids recieved!")
                                 return False
+                        
 
                         if tag_frame != "":
                             if (self.check_dock_frame(self.cfg.first_frame, tag_frame)):
@@ -140,9 +151,9 @@ class AutoDockStateMachine(AutoDockServer):
 
         while(True):
             if(
-                self.pre_dock(mode, first_frame, rotate_orientation) and
-                self.steer_dock(mode, first_frame, rotate_orientation) and
-                self.lastmile_dock(mode, last_frame, rotate_orientation) and
+                self.pre_dock(mode, first_frame, correction_angle, rotate_type) and
+                self.steer_dock(mode, first_frame, correction_angle, rotate_type) and
+                self.lastmile_dock(mode, last_frame, correction_angle, rotate_type) and
                 self.cmd_slider(mode) and
                 self.go_out_dock(mode, dock_name, distance_go_out)
             ):
@@ -233,7 +244,7 @@ class AutoDockStateMachine(AutoDockServer):
             self.rate.sleep()
                 
     
-    def steer_dock_with_pickup(self, mode, dock_frame, rotate_orientation, max_x, min_x):
+    def steer_dock_with_pickup(self, mode, dock_frame, correction_angle, rotate_type, max_x, min_x):
         counter = 0     # How many times for retry_with_high_current
 
         while not rospy.is_shutdown():
@@ -249,7 +260,7 @@ class AutoDockStateMachine(AutoDockServer):
                 self.publish_velocity()
 
                 if (not self.retry_if_high_current(0.4, counter, 5) and
-                    not self.pre_dock(mode, dock_frame, rotate_orientation)):
+                    not self.pre_dock(mode, dock_frame, correction_angle, rotate_type)):
                     return False
 
                 counter += 1
@@ -297,7 +308,7 @@ class AutoDockStateMachine(AutoDockServer):
             self.rate.sleep()
     
     
-    def steer_dock_with_dropoff(self, mode, dock_frame, rotate_orientation, max_x, min_x):
+    def steer_dock_with_dropoff(self, mode, dock_frame, correction_angle, rotate_type, max_x, min_x):
         counter = 0     # How many times for retry_with_high_current
         flag = False
         check_high_current = False
@@ -323,7 +334,7 @@ class AutoDockStateMachine(AutoDockServer):
                 self.update_line_extraction_params(2)
 
                 if (not self.retry_if_high_current(0.4, counter, 5) and
-                    not self.pre_dock(mode, dock_frame, rotate_orientation)):
+                    not self.pre_dock(mode, dock_frame, correction_angle, rotate_type)):
                     return False
         
                 counter += 1
@@ -374,7 +385,7 @@ class AutoDockStateMachine(AutoDockServer):
                 self.publish_velocity(v, w)
             self.rate.sleep()
 
-    def steer_to_charger(self, mode, dock_frame, rotate_orientation, max_vel_x, min_vel_x):
+    def steer_to_charger(self, mode, dock_frame, correction_angle, rotate_type, max_vel_x, min_vel_x):
         _pid = PID(self.cfg.k_p_steer, self.cfg.k_i_steer, self.cfg.k_d_steer)
         prev_time = rospy.Time.now()
 
@@ -391,7 +402,7 @@ class AutoDockStateMachine(AutoDockServer):
                 self.publish_velocity()
 
                 if (not self.move_with_odom(self.cfg.min_linear_vel, self.cfg.max_linear_vel, -0.5) and
-                    not self.pre_dock(mode, dock_frame, rotate_orientation)):
+                    not self.pre_dock(mode, dock_frame, correction_angle, rotate_type)):
                     rospy.logerr("AutodockController: [Steer to charger]: Can't execute after recovery!")
                     return False
                 continue
@@ -451,7 +462,7 @@ class AutoDockStateMachine(AutoDockServer):
             self.rate.sleep()
 
 
-    def lastmile_with_pickup(self, mode, last_frame, rotate_orientation) -> bool:
+    def lastmile_with_pickup(self, mode, last_frame, correction_angle, rotate_type) -> bool:
         flag = False
         flag_1 = False
         counter = 0     # How many times for retry_with_high_current
@@ -505,8 +516,8 @@ class AutoDockStateMachine(AutoDockServer):
                 else:
                     dock_frame = self.tag_frame
 
-                if (not self.pre_dock(mode, dock_frame, rotate_orientation) and
-                    not self.steer_dock(mode, dock_frame, rotate_orientation)):
+                if (not self.pre_dock(mode, dock_frame, correction_angle, rotate_type) and
+                    not self.steer_dock(mode, dock_frame, correction_angle, rotate_type)):
                     return False
                 
                 counter += 1         
@@ -574,7 +585,7 @@ class AutoDockStateMachine(AutoDockServer):
     
     #============> MAIN RUN <============#
 
-    def pre_dock(self, mode, dock_frame, rotate_orientation) -> bool:
+    def pre_dock(self, mode, dock_frame, correction_angle, rotate_type) -> bool:
         self.set_state(DockState.PREDOCK, "Running!")
         
         pose_list = []
@@ -648,6 +659,10 @@ class AutoDockStateMachine(AutoDockServer):
 
                     x, y, yaw = avg_pose
 
+                    if mode != self.mode.MODE_DROPOFF:
+                        if abs(yaw) > 0.2:
+                            yaw = 0.0
+
                     # Check yaw
                     # if not check_yaw:
                     if check_yaw_counter < 2:
@@ -661,9 +676,13 @@ class AutoDockStateMachine(AutoDockServer):
                     if check_y_counter <= 2:
                         if abs(y) > self.cfg.max_parallel_offset:
                             if (mode == self.mode.MODE_PICKUP):
-                                if (not self.auto_correction(x, y, 0.25, self.cfg.back_laser_offset) and
-                                    not self.correct_robot(y, x)):
-                                    return False
+                                if (correction_angle == 0):
+                                    if (not self.auto_correction(x, y, 0.25, self.cfg.back_laser_offset) and
+                                        not self.correct_robot(y, x)):
+                                        return False
+                                else:
+                                    if not self.correct_robot(y, x, correcttion_angle=correction_angle):
+                                        return False
                             
                                 check_y_counter += 1
                                 check_yaw_counter = 0
@@ -671,7 +690,9 @@ class AutoDockStateMachine(AutoDockServer):
                                 continue
 
                             elif (mode == self.mode.MODE_DROPOFF):
-                                if not self.correct_robot(y, x, rotate_orientation=rotate_orientation):
+                                if not self.correct_robot(y, x,
+                                                          correcttion_angle=correction_angle,
+                                                          rotate_type=rotate_type):
                                     return False
                             
                             check_y_counter += 1
@@ -688,22 +709,22 @@ class AutoDockStateMachine(AutoDockServer):
         exit(0)
 
 
-    def steer_dock(self, mode, dock_frame, rotate_orientation) -> bool:
+    def steer_dock(self, mode, dock_frame, correction_angle, rotate_type) -> bool:
         self.set_state(DockState.STEER_DOCK, "Running!")
 
         if (mode == self.mode.MODE_CHARGE):
             self.turn_off_front_safety(True)
-            if not self.steer_to_charger(mode, dock_frame, rotate_orientation,
+            if not self.steer_to_charger(mode, dock_frame, correction_angle, rotate_type,
                                          self.cfg.max_x_pid_steer, self.cfg.min_x_pid_steer):
                 return False
         else:
             self.turn_off_back_safety(True)
             if (mode == self.mode.MODE_PICKUP):
-                if not self.steer_dock_with_pickup(mode, dock_frame, rotate_orientation,
+                if not self.steer_dock_with_pickup(mode, dock_frame, correction_angle, rotate_type,
                                                    self.cfg.max_x_pid_steer, self.cfg.min_x_pid_steer):
                     return False
             else:
-                if not self.steer_dock_with_dropoff(mode, dock_frame, rotate_orientation,
+                if not self.steer_dock_with_dropoff(mode, dock_frame, correction_angle, rotate_type,
                                                 self.cfg.max_x_pid_steer, self.cfg.min_x_pid_steer):
                     return False
 
@@ -711,11 +732,11 @@ class AutoDockStateMachine(AutoDockServer):
         return True
     
 
-    def lastmile_dock(self, mode, dock_frame, rotate_orientation) -> bool:
+    def lastmile_dock(self, mode, dock_frame, correction_angle, rotate_type) -> bool:
         self.set_state(DockState.LAST_MILE, "Running!")
         
         if (mode == self.mode.MODE_PICKUP):
-            if not self.lastmile_with_pickup(mode, dock_frame, rotate_orientation):
+            if not self.lastmile_with_pickup(mode, dock_frame, correction_angle, rotate_type):
                 return False
         elif (mode == self.mode.MODE_DROPOFF):
             if not self.lastmile_with_dropoff():

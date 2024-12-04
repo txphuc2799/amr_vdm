@@ -163,11 +163,11 @@ class PCReadPLC(Type1E):
                         elif line_name == 57:
                             line_name = state.CHARGER
                         
-                        if mode_name == 1:
+                        if mode_name == 1 or mode_name == 4:
                             mode_name = state.CLR_PICKUP
                             if line_name == state.CHARGER:
                                 mode_name = state.CHARGING
-                        elif mode_name == 2:
+                        elif mode_name == 2 or mode_name == 5:
                             mode_name = state.CLR_DROPOFF
                         else:
                             mode_name = state.LINE_DROPOFF

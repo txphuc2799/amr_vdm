@@ -15,7 +15,8 @@ class SpeedFilter():
         # Setup loop frequency
         self.loop_freq_ = 5.0
 
-        self.update_velocity_ = dc.Client("/move_base_node/RotationShimController/VectorPursuitController")
+        # self.update_velocity_ = dc.Client("/move_base_node/RotationShimController/VectorPursuitController")
+        self.update_velocity_ = dc.Client("/move_base_node/RotationShimController/TebLocalPlannerROS")
 
         self.is_running_ = False
         self.current_speed_limit_ = 1.0
@@ -35,7 +36,8 @@ class SpeedFilter():
         self.speed_at_field_ = msg.data
 
     def update_velocity(self, speed_limit_per):
-        self.update_velocity_.update_configuration({'desired_linear_vel': self.max_velocity_*speed_limit_per})
+        # self.update_velocity_.update_configuration({'desired_linear_vel': self.max_velocity_*speed_limit_per})
+        self.update_velocity_.update_configuration({'max_vel_x': self.max_velocity_*speed_limit_per})
         rospy.loginfo((f"Updated velocity to {round(self.max_velocity_ * speed_limit_per, 2)}m/s "
                        f"from max velocity is {self.max_velocity_}m/s."))
 

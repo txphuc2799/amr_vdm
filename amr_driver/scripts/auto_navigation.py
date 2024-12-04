@@ -26,6 +26,10 @@ INFO  = rospy.loginfo
 WARN  = rospy.logwarn
 ERROR = rospy.logerr
 
+BOTH = AutoDockingGoal().BOTH
+ONLY_LEFT = AutoDockingGoal().ONLY_LEFT
+ONLY_RIGHT = AutoDockingGoal().ONLY_RIGHT
+
 amr_waypoint_file = "/home/amr/catkin_ws/src/amr_vdm/amr_waypoint_generator/config/amr_waypoints.yaml"
 map_file = "/home/amr/catkin_ws/src/amr_vdm/amr_gazebo/maps/custom_map_5/custom_map_5.yaml"
 
@@ -145,26 +149,29 @@ class AutoNavigation():
         # Variables:
         self.start_state = StartState()
         self.mode = AutoDockingGoal()
-        self.tag_ids_55 = [0,2,3]
+        self.tag_ids_55_ = [0, 2, 3]
+        self.tag_ids_56_ = [4]
         self.detect_obstacle_ = False
         self.is_stopped_ = False
         self.is_pausing_  = False
         self.error = 2   #[0] - Loi cap hang, [1] - Loi lay hang, [2] - Loi vi tri
         self.prev_state = None
 
-        # Waypoints:
-        self.line_55_clr_goal = self.get_pose_from_yaml("line_55_clr_goal")
-        self.line_56_clr_goal = self.get_pose_from_yaml("line_56_clr_goal")
-        self.line_55_pickup_goal = self.get_pose_from_yaml("line_55_pickup_goal")
+        ### Waypoints:
+        # LINE 55
+        self.clr55_pickup_    = self.get_pose_from_yaml("clr55_pickup")
+        self.clr55_to_line55_ = self.get_pose_from_yaml("clr55_to_line55")
+        self.line55_pickup_   = self.get_pose_from_yaml("line55_pickup")
+        self.line55_to_clr55_ = self.get_pose_from_yaml("line55_to_clr55")
         
-        self.waypoint_clr_to_line_55 = self.get_pose_from_yaml("waypoint_clr_to_line_55")
-        self.waypoint_line_55_back_to_clr = self.get_pose_from_yaml("waypoint_line_55_back_to_clr")
+        # LINE 56
+        self.clr56_pickup_    = self.get_pose_from_yaml("clr56_pickup")
+        self.clr56_to_line56_ = self.get_pose_from_yaml("clr56_to_line56")
+        self.line56_pickup_   = self.get_pose_from_yaml("line56_pickup")
+        self.line56_to_clr56_ = self.get_pose_from_yaml("line56_to_clr56")
 
-        self.waypoint_clr_to_line_56 = self.get_pose_from_yaml("waypoint_clr_to_line_56")
-        self.waypoint_line_56_back_to_clr = self.get_pose_from_yaml("waypoint_line_56_back_to_clr")
-
+        # CHARGER
         self.charger_goal_ = self.get_pose_from_yaml("charger_goal")
-        self.park_goal_ = self.get_pose_from_yaml("amr_park_tp2")
 
         # Publishers:
         self.pub_pose_array  = rospy.Publisher(self.params.waypoints_list_topic, PoseArray, queue_size=1, latch=True)
@@ -541,7 +548,10 @@ class AutoNavigation():
         try:
             closest_poses = pose_arr[(closest_index+1):]
         except:
-            closest_poses = pose_arr[[poses[-1]]]
+            closest_poses = [poses[-1]]
+        
+        if len(closest_poses) == 0:
+            closest_poses = [poses[-1]]
      
         for i in closest_poses:
             pose = Pose()
@@ -654,13 +664,20 @@ class AutoNavigation():
 
     
     def send_auto_docking(self, mode:int, dock_name:str, tag_ids=[],
-                          angle_to_dock=0, rotate_orientation=0, distance_go_out=None):
+                          angle_to_dock=0, correction_angle=0,
+                          rotate_type=BOTH, distance_go_out=None):
+        """
+        `rotate_type = ONLY_LEFT`: Clockwise rotating
+
+        `rotate_type = ONLY_RIGHT`: Counter clockwise rotating
+        """
         goal = AutoDockingGoal()
         goal.mode = mode
         goal.dock_name = dock_name
         goal.tag_ids = tag_ids
         goal.angle_to_dock = angle_to_dock
-        goal.rotate_orientation = rotate_orientation
+        goal.correction_angle = correction_angle
+        goal.rotate_type = rotate_type
         goal.distance_go_out = distance_go_out
 
         self.autodock_client.send_goal(goal)
@@ -676,17 +693,17 @@ class AutoNavigation():
             return False
 
 
-    #===============> LINE 55 <================#
+    ### LINE 55
     def clr55_pickup(self):
-        if not self.navigate_to_goal(self.line_55_clr_goal):
+        if not self.navigate_to_goal(self.clr55_pickup_):
             return False
-        if not self.send_auto_docking(self.mode.MODE_PICKUP, "clr55_pickup", self.tag_ids_55, distance_go_out=0.8):
+        if not self.send_auto_docking(self.mode.MODE_PICKUP, "clr55_pickup", self.tag_ids_55_, distance_go_out=0.8):
             self.error = 1
             return False
         return True
     
     def line55_dropoff(self):
-        if not self.navigate_through_goal(self.waypoint_clr_to_line_55):
+        if not self.navigate_through_goal(self.clr55_to_line55_):
             return False
         if not self.send_auto_docking(self.mode.MODE_DROPOFF, "line55_dropoff", distance_go_out=0.6):
             self.error = 0
@@ -694,18 +711,53 @@ class AutoNavigation():
         return True
 
     def line55_pickup(self):
-        if not self.navigate_to_goal(self.line_55_pickup_goal):
+        if not self.navigate_to_goal(self.line55_pickup_):
             return False
-        if not self.send_auto_docking(self.mode.MODE_PICKUP, "line55_pickup", self.tag_ids_55, distance_go_out=0.8):
+        if not self.send_auto_docking(self.mode.MODE_PICKUP, "line55_pickup", self.tag_ids_55_, distance_go_out=0.8):
             self.error = 1
             return False
         return True
 
     def clr55_dropoff(self):
-        if not self.navigate_through_goal(self.waypoint_line_55_back_to_clr):
+        if not self.navigate_through_goal(self.line55_to_clr55_):
             return False
-        if not self.send_auto_docking(self.mode.MODE_DROPOFF, "clr55_dropoff", angle_to_dock=92,
-                                      rotate_orientation=2, distance_go_out=1.0):
+        if not self.send_auto_docking(self.mode.MODE_DROPOFF, "clr55_dropoff", angle_to_dock=182,
+                                      rotate_type=ONLY_LEFT, distance_go_out=1.0):
+            self.error = 0
+            return False
+        return True
+    
+    ### LINE 56
+    def clr56_pickup(self):
+        if not self.navigate_to_goal(self.clr56_pickup_):
+            return False
+        if not self.send_auto_docking(self.mode.MODE_PICKUP, "clr56_pickup", self.tag_ids_56_, distance_go_out=0.8):
+            self.error = 1
+            return False
+        return True
+    
+    def line56_dropoff(self):
+        if not self.navigate_through_goal(self.clr56_to_line56_):
+            return False
+        if not self.send_auto_docking(self.mode.MODE_DROPOFF, "line56_dropoff",
+                                      correction_angle=45, rotate_type=ONLY_RIGHT, distance_go_out=0.4):
+            self.error = 0
+            return False
+        return True
+
+    def line56_pickup(self):
+        if not self.send_auto_docking(self.mode.MODE_PICKUP, "line56_pickup",
+                                      self.tag_ids_56_, angle_to_dock=-90,
+                                      correction_angle=30, distance_go_out=1.3):
+            self.error = 1
+            return False
+        return True
+
+    def clr56_dropoff(self):
+        if not self.navigate_through_goal(self.line56_to_clr56_):
+            return False
+        if not self.send_auto_docking(self.mode.MODE_DROPOFF, "clr56_dropoff",
+                                      angle_to_dock=92, distance_go_out=1.0):
             self.error = 0
             return False
         return True
@@ -723,6 +775,7 @@ class AutoNavigation():
 
 
     #===============> MAIN RUN <===============#
+    # LINE 55
     def line_55_navigation(self, state):
         if state == self.start_state.CLR_PICKUP:
             if (
@@ -740,6 +793,28 @@ class AutoNavigation():
                 self.line55_dropoff() and
                 self.line55_pickup() and
                 self.clr55_dropoff()
+            ):  return True
+        
+        return False
+    
+    # LINE 56
+    def line_56_navigation(self, state):
+        if state == self.start_state.CLR_PICKUP:
+            if (
+                self.clr56_pickup() and
+                self.line56_dropoff() and
+                self.line56_pickup() and
+                self.clr56_dropoff()
+            ):  return True
+
+        elif state == self.start_state.CLR_DROPOFF:
+            if self.clr56_dropoff(): return True   
+
+        elif state == self.start_state.LINE_DROPOFF:
+            if (
+                self.line56_dropoff() and
+                self.line56_pickup() and
+                self.clr56_dropoff()
             ):  return True
         
         return False
@@ -762,6 +837,13 @@ class AutoNavigation():
         if state.start_state[0] == self.start_state.LINE_55:
             self.prev_state = self.start_state.LINE_55
             if not self.line_55_navigation(state.start_state[1]):
+                ERROR("AutoNavigation: Navigation is failed!")
+                self.publish_mode_error(self.error)
+                self.reset()
+                return False
+        elif state.start_state[0] == self.start_state.LINE_56:
+            self.prev_state = self.start_state.LINE_56
+            if not self.line_56_navigation(state.start_state[1]):
                 ERROR("AutoNavigation: Navigation is failed!")
                 self.publish_mode_error(self.error)
                 self.reset()

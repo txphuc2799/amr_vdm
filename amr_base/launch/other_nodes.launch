@@ -43,6 +43,6 @@
 
       <node name="speed_filter" pkg="amr_driver" type="speed_filter.py" 
             respawn="true" output="screen" ns="$(arg namespace)">
-            <param name="max_velocity" type="double" value="0.7"/>
+            <param name="max_velocity" type="double" value="0.75"/>
       </node>
 </launch>

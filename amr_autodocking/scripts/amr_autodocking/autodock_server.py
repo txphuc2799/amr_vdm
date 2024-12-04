@@ -36,6 +36,9 @@ from sensor_msgs.msg import LaserScan
 from std_srvs.srv import SetBool
 from amr_autodocking.pid import PID
 
+BOTH = AutoDockingGoal().BOTH
+ONLY_LEFT = AutoDockingGoal().ONLY_LEFT
+ONLY_RIGHT = AutoDockingGoal().ONLY_RIGHT
 
 class AutodockConfig:
     # [General configure]
@@ -56,7 +59,7 @@ class AutodockConfig:
     first_frame = "first_frame"
     last_frame = "last_frame"
     parallel_frame = "parallel_frame"
-    custom_dock_name = None
+    custom_dock_name = {}
    
     # [Goal threshold]
     stop_yaw_diff   = 0.05              # radian
@@ -161,12 +164,6 @@ class AutoDockServer:
         if self.cfg.debug_mode:
             self.pub_marker = rospy.Publisher('/sm_maker', Marker, queue_size=1)
             self.__timer = rospy.Timer(rospy.Duration(0.5), self.timer_callback)
-
-        # Move_to_pose client
-        # rospy.logwarn("AutoDockServer: Connecting to move to pose service...")
-        # rospy.wait_for_service("move_to_pose")
-        # rospy.loginfo("AutoDockServer: Connected to move to pose service.")
-        # self.move_to_pose_client = rospy.ServiceProxy("move_to_pose", MoveToPose)
 
         # Apriltag continuous detection service
         self.apriltag_client = rospy.ServiceProxy("/back_camera/apriltag_ros/enable_detector", SetBool)
@@ -284,7 +281,8 @@ class AutoDockServer:
             x, y, yaw    = utils.get_2d_pose(laser_tf)
             x1, y1, yaw1 = utils.get_2d_pose(tag_tf)
         
-            return (self.distance2D(x - x1, y - y1) <= 0.04)
+            return (x - x1 <= 0.05
+                    and y - y1  <= 0.04)
         
         return True
 
@@ -295,28 +293,32 @@ class AutoDockServer:
         
         return angle
                 
-    def correct_robot(self, offset, signal, rotate_angle=30, rotate_orientation=0,
+    def correct_robot(self, offset, signal, correcttion_angle=0, rotate_type=BOTH,
                       factor_30=math.sqrt(3), factor_45=math.sqrt(2), factor_60=2/math.sqrt(3)) -> bool:
         """
         Correcting robot respective to dock frame
 
         `signal`: Whether the goal is behind? (Depend on x coordinate)
 
-        `rotate_angle`: Choose the rotate_angle respect with 30, 45, or 90 degrees
-        `rotate_angle = 30`: Correcting robot with 30 degrees
-        `rotate_angle = 45`: Correcting robot with 45 degrees
-        `rotate_angle = 60`: Correcting robot with 60 degrees
-        `rotate_angle = 90`: Correcting robot with 90 degrees
+        `correcttion_angle`: Choose the correcttion_angle respect with 30, 45, or 90 degrees
 
-        `rotate_orientation = 1`: Counter clockwise rotating
-        `rotate_orientation = 2`: Clockwise rotating
-        """
-        assert (type(rotate_orientation) == int), "rotate_orientation is not int type!"
-        
-        if rotate_orientation == 1 and offset < 0:
+        `correcttion_angle = 30`: Correcting robot with 30 degrees
+
+        `correcttion_angle = 45`: Correcting robot with 45 degrees
+
+        `correcttion_angle = 60`: Correcting robot with 60 degrees
+
+        `correcttion_angle = 90`: Correcting robot with 90 degrees
+
+        Default correcttion_angle = 30 degrees
+
+        `rotate_type = ONLY_RIGHT`: Clockwise rotating
+        `rotate_type = ONLY_LEFT`: Counter clockwise rotating
+        """        
+        if rotate_type == ONLY_RIGHT and offset < 0:
             a = 1
             b = 0
-        elif rotate_orientation == 2 and offset > 0: 
+        elif rotate_type == ONLY_LEFT and offset > 0: 
             a = -1
             b = 0
         elif offset > 0:
@@ -326,25 +328,25 @@ class AutoDockServer:
             a = -1
             b = 1
         
-        if rotate_angle == 30:
+        if correcttion_angle == 0 or correcttion_angle == 30:
             msg = "30"
             alpha = math.pi/6
             x1 = 2*a*offset
             x2 = -a*b*factor_30*offset
         
-        elif rotate_angle == 45:
+        elif correcttion_angle == 45:
             msg = "45"
             alpha = math.pi/4
             x1 = a*factor_45*offset
             x2 = -a*b*offset
 
-        elif rotate_angle == 60:
+        elif correcttion_angle == 60:
             msg = "60"
             alpha = math.pi/3
             x1 = a*factor_60*offset
             x2 = -0.5*a*b*factor_60*offset
 
-        elif rotate_angle == 90:
+        elif correcttion_angle == 90:
             msg = "90"
             alpha = math.pi/2
             x1 = a*offset
@@ -415,18 +417,6 @@ class AutoDockServer:
                         rospy.logerr("Autodock: action key is not properly, available key is 'rotate' or move!")
                         return False
         return True
-        
-    # def send_goal(self, x, y, theta):
-    #     """
-    #     Send goal to move_to_pose
-    #     """
-    #     try:
-    #         rospy.loginfo("Waiting the result from server...")
-    #         resp = self.move_to_pose_client(x, y, theta)
-    #         return resp.is_success
-        
-    #     except rospy.ServiceException as e:
-    #         rospy.logerr("Service call failed: %s"%e)
 
     def enable_apriltag_detector(self, signal):
         """
@@ -511,7 +501,7 @@ class AutoDockServer:
     def dropoff_current_callback(self, msg: Bool):
         self.high_motor_drop_current = msg.data
 
-    def start(self, mode, dock_name, tag_ids, angle_to_dock, rotate_orientation, distance_go_out) -> bool:
+    def start(self, mode, dock_name, tag_ids, angle_to_dock, correction_angle, rotate_type, distance_go_out) -> bool:
         """
         Virtual function. This function will be triggered when autodock request
         is requested
@@ -834,7 +824,8 @@ class AutoDockServer:
         self.time_out_remain = self.cfg.dock_timeout
         _result = AutoDockingResult()
         _result.is_success = self.start(goal.mode, goal.dock_name, goal.tag_ids,
-                                        goal.angle_to_dock, goal.rotate_orientation, goal.distance_go_out)
+                                        goal.angle_to_dock, goal.correction_angle,
+                                        goal.rotate_type, goal.distance_go_out)
         
         _prev_state = DockState.to_string(self.feedback_msg.state)
 

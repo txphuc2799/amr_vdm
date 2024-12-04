@@ -18,13 +18,13 @@ tag_frame: tag_frame
 parallel_frame: parallel_frame
 
 # Custom dock
-custom_dock_name:
-  clr55_dropoff:
-    action1:
-      rotate: -92
-      move: -0.5
-    action2:
-      rotate: 92
+# custom_dock_name:
+#   clr55_dropoff:
+#     action1:
+#       rotate: -92
+#       move: -0.5
+#     action2:
+#       rotate: 92
 
 # Goal threshold
 stop_trans_diff: 0.02         # [m]

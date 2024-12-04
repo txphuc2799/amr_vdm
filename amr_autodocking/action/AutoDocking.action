@@ -12,10 +12,14 @@ uint8 MODE_UNDOCK = 4
 string dock_name
 uint8[] tag_ids
 int16 angle_to_dock
+int16 correction_angle
 float32 distance_go_out
 
 # 1 - Counter clockwise, 2 - Clockwise
-int16 rotate_orientation 
+uint8 rotate_type
+uint8 BOTH = 0
+uint8 ONLY_LEFT = 1
+uint8 ONLY_RIGHT = 2 
 
 ---
 ######################################################################
