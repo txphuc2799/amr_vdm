@@ -119,7 +119,6 @@ class AutoDockStateMachine(AutoDockServer):
                             else:
                                 rospy.logerr("No tag_ids recieved!")
                                 return False
-                        
 
                         if tag_frame != "":
                             if (self.check_dock_frame(self.cfg.first_frame, tag_frame)):
@@ -271,7 +270,7 @@ class AutoDockStateMachine(AutoDockServer):
                 else:
                     dock_frame = self.tag_frame
 
-                dock_tf = self.get_tf(dock_frame)
+                dock_tf = self.get_tf(dock_frame, transform_timeout=0.3)
                 
                 if dock_tf is None:
                     return True
@@ -300,9 +299,7 @@ class AutoDockStateMachine(AutoDockServer):
                 else:
                     w = 0
                 
-                # Constrain angle
-                if abs(w) > 0.3:
-                    w = 0.0
+                w = utils.clamp(w, -0.15, 0.15)
                 
                 self.publish_velocity(v, w)
             self.rate.sleep()
@@ -379,8 +376,7 @@ class AutoDockStateMachine(AutoDockServer):
                     w = 0
                 
                 # Constrain angle
-                if abs(w) > 0.3:
-                    w = 0.0
+                w = utils.clamp(w, -0.3, 0.3)
                 
                 self.publish_velocity(v, w)
             self.rate.sleep()
@@ -575,8 +571,7 @@ class AutoDockStateMachine(AutoDockServer):
                         w = 0.02
                 
                 # Constrain angle
-                if abs(w) > 0.15:
-                    w = 0.0
+                w = utils.clamp(w, -0.1, 0.1)
                 
                 self.publish_velocity(v, w)
             self.rate.sleep()
@@ -660,8 +655,7 @@ class AutoDockStateMachine(AutoDockServer):
                     x, y, yaw = avg_pose
 
                     if mode != self.mode.MODE_DROPOFF:
-                        if abs(yaw) > 0.2:
-                            yaw = 0.0
+                        yaw = utils.clamp(yaw, -0.26, 0.26)
 
                     # Check yaw
                     # if not check_yaw:

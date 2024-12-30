@@ -136,10 +136,9 @@ class SafetyController():
                     or self.back_safety_state_ == SafetyStatus.PROTECTED
                     or self.ultrasonic_safety_status_ == SafetyStatus.PROTECTED):
                     
-                    self.field_state_ = SafetyStatus.PROTECTED
                     delay_time = 0.0
-
-                    if self.field_state_ != self.prev_field_state_:
+                    if self.field_state_ != SafetyStatus.PROTECTED:
+                        self.field_state_ = SafetyStatus.PROTECTED
                         self.pub_status_protected_field.publish(True)
                         self.configureOscillationTimeOut(self.timeout_obstacles)
                 else:

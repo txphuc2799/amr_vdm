@@ -281,8 +281,8 @@ class AutoDockServer:
             x, y, yaw    = utils.get_2d_pose(laser_tf)
             x1, y1, yaw1 = utils.get_2d_pose(tag_tf)
         
-            return (x - x1 <= 0.05
-                    and y - y1  <= 0.04)
+            return ((abs(x - x1) <= 0.03)
+                    and (abs(y - y1) <= 0.02))
         
         return True
 
@@ -615,7 +615,8 @@ class AutoDockServer:
     def get_tf(self,
                target_link=None,
                ref_link=None,
-               target_time=None) -> np.ndarray:
+               target_time=None,
+               transform_timeout=0.5) -> np.ndarray:
         """
         This will provide the transformation of the marker,
         if ref_link is not provided, we will use robot's base_link as ref
@@ -633,7 +634,7 @@ class AutoDockServer:
             return utils.get_mat_from_transfrom_msg(
                 self.__tfBuffer.lookup_transform(
                     ref_link, target_link, target_time,
-                    rospy.Duration(self.cfg.tf_expiry))
+                    rospy.Duration(transform_timeout))
             )
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
