@@ -12,7 +12,7 @@ steer_distance_threshold: 0.63
 # Frames
 base_link: base_link
 charger_frame: charger_frame
-first_frame: first_frame
+first_frame: cart_frame
 last_frame: last_frame
 tag_frame: tag_frame
 parallel_frame: parallel_frame
@@ -41,6 +41,10 @@ max_linear_vel: 0.3
 min_linear_vel: 0.035                 # [m/s]
 # max_linear_vel: 0.1
 # min_linear_vel: 0.035                 # [m/s]
+rotate_to_heading_angular_vel: 0.5
+max_angular_accel: 3.2
+max_angular_deccel: 0.3
+angle_threshold: 0.35
 max_linear_vel_predock: 0.15      
 max_x_lastmile: 0.03                  # [m/s] - Max linear velocity in lastmile state
 max_x_out_dock: 0.2                   # [m/s] - Max linear velocity when go out dock

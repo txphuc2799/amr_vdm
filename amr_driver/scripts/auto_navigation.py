@@ -74,7 +74,7 @@ class Parameter():
     map_frame_id = "map"
     odom_frame_id = "odom"
     robot_base_frame_id = "base_footprint"
-    distance_tolerance = 3.0
+    distance_tolerance = 2.0
     frequency = 100
     tf_expiry = 1.0
     max_x_move = 0.2
@@ -149,8 +149,8 @@ class AutoNavigation():
         # Variables:
         self.start_state = StartState()
         self.mode = AutoDockingGoal()
-        self.tag_ids_55_ = [0, 2, 3]
-        self.tag_ids_56_ = [4]
+        self.tag_ids_55_ = [0, 1, 2]
+        self.tag_ids_56_ = [3]
         self.detect_obstacle_ = False
         self.is_stopped_ = False
         self.is_pausing_  = False
@@ -697,7 +697,8 @@ class AutoNavigation():
     def clr55_pickup(self):
         if not self.navigate_to_goal(self.clr55_pickup_):
             return False
-        if not self.send_auto_docking(self.mode.MODE_PICKUP, "clr55_pickup", self.tag_ids_55_, distance_go_out=0.8):
+        if not self.send_auto_docking(self.mode.MODE_PICKUP, "clr55_pickup", self.tag_ids_55_,
+                                      angle_to_dock=-92, distance_go_out=0.8):
             self.error = 1
             return False
         return True
@@ -713,7 +714,8 @@ class AutoNavigation():
     def line55_pickup(self):
         if not self.navigate_to_goal(self.line55_pickup_):
             return False
-        if not self.send_auto_docking(self.mode.MODE_PICKUP, "line55_pickup", self.tag_ids_55_, distance_go_out=0.8):
+        if not self.send_auto_docking(self.mode.MODE_PICKUP, "line55_pickup", self.tag_ids_55_,
+                                      angle_to_dock=-92, distance_go_out=0.8):
             self.error = 1
             return False
         return True
@@ -721,8 +723,7 @@ class AutoNavigation():
     def clr55_dropoff(self):
         if not self.navigate_through_goal(self.line55_to_clr55_):
             return False
-        if not self.send_auto_docking(self.mode.MODE_DROPOFF, "clr55_dropoff", angle_to_dock=182,
-                                      rotate_type=ONLY_LEFT, distance_go_out=1.0):
+        if not self.send_auto_docking(self.mode.MODE_DROPOFF, "clr55_dropoff", angle_to_dock=182, distance_go_out=0.6):
             self.error = 0
             return False
         return True
@@ -731,7 +732,8 @@ class AutoNavigation():
     def clr56_pickup(self):
         if not self.navigate_to_goal(self.clr56_pickup_):
             return False
-        if not self.send_auto_docking(self.mode.MODE_PICKUP, "clr56_pickup", self.tag_ids_56_, distance_go_out=0.8):
+        if not self.send_auto_docking(self.mode.MODE_PICKUP, "clr56_pickup", self.tag_ids_56_,
+                                      angle_to_dock=-90, distance_go_out=0.8):
             self.error = 1
             return False
         return True
@@ -757,7 +759,7 @@ class AutoNavigation():
         if not self.navigate_through_goal(self.line56_to_clr56_):
             return False
         if not self.send_auto_docking(self.mode.MODE_DROPOFF, "clr56_dropoff",
-                                      angle_to_dock=92, distance_go_out=1.0):
+                                      angle_to_dock=182, distance_go_out=0.6):
             self.error = 0
             return False
         return True
@@ -856,7 +858,16 @@ class AutoNavigation():
                 self.publish_mode_error(self.error)
                 self.reset()
                 return False
-            
+            return True
+        
+        idle_goal = self.get_pose_from_yaml("idle_goal")
+        if (not self.navigate_to_goal(idle_goal)
+            or not self.rotate_with_odom(self.params.min_angular_vel, self.params.max_angular_vel, -math.pi)):
+            ERROR("AutoNavigation: Navigation is failed!")
+            self.publish_mode_error(self.error)
+            self.reset()
+            return False
+        
         INFO("AutoNavigation: Navigation is complete!")
         self.reset()
         return True    

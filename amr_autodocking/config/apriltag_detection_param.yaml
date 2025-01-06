@@ -11,6 +11,7 @@ max_hamming_dist:  2          # default: 2 (Tunable parameter with 2 being a goo
 # Other parameters
 publish_tf:        true       # default: false
 z_up:              true
+enable_detector:   false
 transport_hint:    "raw"      # default: raw, see http://wiki.ros.org/image_transport#Known_Transport_Packages for options
 
 # Syntax
@@ -21,16 +22,27 @@ transport_hint:    "raw"      # default: raw, see http://wiki.ros.org/image_tran
 #   ]
 standalone_tags:
   [
-    {id: 0, size: 0.04, name: tag_frame_0},
-    {id: 1, size: 0.04, name: tag_frame_1},
-    {id: 2, size: 0.04, name: tag_frame_2},
-    {id: 3, size: 0.04, name: tag_frame_3},
-    {id: 4, size: 0.04, name: tag_frame_4},
-    {id: 5, size: 0.04, name: tag_frame_5},
-    {id: 6, size: 0.04, name: tag_frame_6},
-    {id: 7, size: 0.04, name: tag_frame_7},
-    {id: 8, size: 0.04, name: tag_frame_8},
-    {id: 9, size: 0.04, name: tag_frame_9},
+    {id: 0, size: 0.042, name: tag_frame_0},
+    {id: 1, size: 0.042, name: tag_frame_1},
+    {id: 2, size: 0.042, name: tag_frame_2},
+    {id: 3, size: 0.042, name: tag_frame_3},
+    {id: 4, size: 0.042, name: tag_frame_4},
+    {id: 5, size: 0.042, name: tag_frame_5},
+    {id: 6, size: 0.042, name: tag_frame_6},
+    {id: 7, size: 0.042, name: tag_frame_7},
+    {id: 8, size: 0.042, name: tag_frame_8},
+    {id: 9, size: 0.042, name: tag_frame_9},
+    {id: 10, size: 0.042, name: tag_frame_10},
+    {id: 11, size: 0.042, name: tag_frame_11},
+    {id: 12, size: 0.042, name: tag_frame_12},
+    {id: 13, size: 0.042, name: tag_frame_13},
+    {id: 14, size: 0.042, name: tag_frame_14},
+    {id: 15, size: 0.042, name: tag_frame_15},
+    {id: 16, size: 0.042, name: tag_frame_16},
+    {id: 17, size: 0.042, name: tag_frame_17},
+    {id: 18, size: 0.042, name: tag_frame_18},
+    {id: 19, size: 0.042, name: tag_frame_19},
+    {id: 20, size: 0.042, name: tag_frame_20},
   ]
 # Tag bundle definitions
 # Remarks

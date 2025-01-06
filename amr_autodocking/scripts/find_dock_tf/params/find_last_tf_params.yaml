@@ -1,8 +1,8 @@
-pattern_length_vector_b: 0.07
-pattern_length_vector_c: 0.07
+pattern_length_vector_b: 0.05
+pattern_length_vector_c: 0.05
 pattern_angle_bc: 0
 angle_tolerance: 0.15
 angle_threshold: 0.5
 pattern_dis_bc: 0.18
 laser_frame_id: back_laser_link
-dock_name: last_frame
+dock_frame: last_frame

@@ -2,7 +2,7 @@
 import rospy
 
 from std_msgs.msg import Bool, Int16, Empty
-from amr_v3_msgs.msg import SafetyZone
+from amr_msgs.msg import SafetyZone
 from amr_driver.mcprotocol.type1e import Type1E
 
 class Parameter():
@@ -48,7 +48,7 @@ class PCWritePLC(Type1E):
         rospy.Subscriber("safety_zone_type", SafetyZone, self.safety_zone_callback)
         rospy.Subscriber("error_mode", Int16, self.mode_error_callback)
         rospy.Subscriber("cmd_slider", Int16, self.cmd_slider_callback)
-        rospy.Subscriber("/back_camera/camera_finished", Bool, self.finished_callback)
+        rospy.Subscriber("/back_camera/camera_startup_finished", Bool, self.finished_callback)
         rospy.Subscriber("RESET_AMR", Empty, self.reset_callback)
 
         # Avariables:

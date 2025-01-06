@@ -1,7 +1,7 @@
 import tf.transformations as tf
 
 # Define the yaw angle (in radians)
-yaw = 0.0  # Example yaw angle (90 degrees in radians)
+yaw = -1.57  # Example yaw angle (90 degrees in radians)
 
 # Create a quaternion from yaw (roll and pitch are set to 0)
 quaternion = tf.quaternion_from_euler(0, 0, yaw)

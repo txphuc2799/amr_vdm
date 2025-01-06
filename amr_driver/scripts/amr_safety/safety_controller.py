@@ -61,11 +61,11 @@ class SafetyController():
 
     
     def switch_footprint_callback(self, msg:SliderSensorStamped):
-        if msg.sensor_state.state:
-            if msg.sensor_state.state[0] == IN:
+        if msg.sensor_state.data:
+            if msg.sensor_state.data[0] == IN:
                 self.global_footprint_client.update_configuration(self.default_footprint)
                 self.local_footprint_client.update_configuration(self.default_footprint)
-            elif msg.sensor_state.state[1] == OUT:
+            elif msg.sensor_state.data[1] == OUT:
                 self.global_footprint_client.update_configuration(self.big_footprint)
                 self.local_footprint_client.update_configuration(self.big_footprint)
 

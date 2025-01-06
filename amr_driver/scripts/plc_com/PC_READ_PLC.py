@@ -242,7 +242,7 @@ class PCReadPLC(Type1E):
                 cart_sensor = SliderSensorStamped()
                 cart_sensor.header.stamp = rospy.Time.now()
                 cart_sensor.sensor_state.sensor_name = ["left_cart, right_cart"]
-                cart_sensor.sensor_state.state = bit_array[7:9]
+                cart_sensor.sensor_state.data = bit_array[7:9]
                 self.pub_cart_sensor.publish(cart_sensor)
                 self.cart_sensor_state = bit_array[7:9]
 
@@ -252,7 +252,7 @@ class PCReadPLC(Type1E):
                 slider_sensor = SliderSensorStamped()
                 slider_sensor.header.stamp = rospy.Time.now()
                 slider_sensor.sensor_state.sensor_name = ["origin_slider, max_slider"]
-                slider_sensor.sensor_state.state = bit_array[9:11]
+                slider_sensor.sensor_state.data = bit_array[9:11]
                 self.pub_max_slider.publish(slider_sensor)
                 self.slider_sensor_state = bit_array[9:11]
 

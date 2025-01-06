@@ -1,2 +1,2 @@
 string[] sensor_name
-int32[] state
+int32[] data

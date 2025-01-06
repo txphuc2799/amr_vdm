@@ -2,7 +2,7 @@
 import rospy
 
 from std_msgs.msg import Bool
-from amr_v3_msgs.msg import SafetyZone
+from amr_msgs.msg import SafetyZone
 
 
 class SafetyZoneType():

@@ -18,11 +18,10 @@ import rospy
 import math
 import amr_autodocking.autodock_utils as utils
 
-from amr_autodocking.autodock_server import AutodockConfig, AutoDockServer
+from amr_autodocking.autodock_server import AutodockConfig, AutoDockServer, AutodockConst
 from amr_autodocking.autodock_utils import DockState
 from apriltag_ros.msg import AprilTagDetectionArray
 from amr_autodocking.pid import PID
-
 
 class AutoDockStateMachine(AutoDockServer):
     """
@@ -98,7 +97,7 @@ class AutoDockStateMachine(AutoDockServer):
             self.enable_line_detector('back', True)
             
             if (mode == self.mode.MODE_PICKUP):
-                self.update_line_extraction_params(0)
+                self.update_line_extraction_params()
                 self.enable_apriltag_detector(True)
                 
                 # (TODO) - Sometimes tag is delayed in few miliseconds,
@@ -143,8 +142,8 @@ class AutoDockStateMachine(AutoDockServer):
                         return False
             else:
                 first_frame = self.cfg.parallel_frame
-                self.update_line_extraction_params(2)
-                self.update_polygon_params(2)
+                self.update_line_extraction_params(AutodockConst.DROPOFF)
+                self.update_polygon_params(AutodockConst.DROPOFF)
 
         last_frame = self.cfg.last_frame
 
@@ -328,7 +327,7 @@ class AutoDockStateMachine(AutoDockServer):
                 self.reset_high_current()
                 flag = False
                 self.publish_velocity()
-                self.update_line_extraction_params(2)
+                self.update_line_extraction_params(AutodockConst.DROPOFF)
 
                 if (not self.retry_if_high_current(0.4, counter, 5) and
                     not self.pre_dock(mode, dock_frame, correction_angle, rotate_type)):
@@ -339,7 +338,7 @@ class AutoDockStateMachine(AutoDockServer):
                 # Check whether back laser in dock (Depend on distance from center of laser to both side of the dock)
                 if (self.left_range < 0.3 and self.right_range < 0.3):
                     if not flag:
-                        self.update_line_extraction_params(1)
+                        self.update_line_extraction_params(AutodockConst.PICKUP)
                         start_time = rospy.Time.now()
                         flag = True
                         rospy.loginfo("AutodockController: BackLaser is in dropoff dock!")
@@ -500,7 +499,7 @@ class AutoDockStateMachine(AutoDockServer):
 
                 self.reset_high_current()
                 self.publish_velocity()
-                self.update_line_extraction_params(0)
+                self.update_line_extraction_params()
                 flag = False
                 flag_1 = False
 
@@ -520,7 +519,7 @@ class AutoDockStateMachine(AutoDockServer):
 
             else:
                 if (not flag_1):
-                    self.update_line_extraction_params(1)
+                    self.update_line_extraction_params(AutodockConst.PICKUP)
                     flag_1 = True
 
                 dock_tf = self.get_tf(last_frame)
@@ -615,7 +614,7 @@ class AutoDockStateMachine(AutoDockServer):
                     #    (abs(yaw) > self.cfg.yaw_predock_tolerance)):
                     if ((check_yaw_counter < 2) and 
                         (abs(yaw) > self.cfg.yaw_predock_tolerance)):
-                        if not self.rotate_with_odom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, yaw):
+                        if not self.rotate_with_odom(yaw):
                             return False
                         # check_yaw = True
                         check_yaw_counter += 1
@@ -653,15 +652,13 @@ class AutoDockStateMachine(AutoDockServer):
                     pose_list = []
 
                     x, y, yaw = avg_pose
-
-                    if mode != self.mode.MODE_DROPOFF:
-                        yaw = utils.clamp(yaw, -0.26, 0.26)
+                    yaw = utils.clamp(yaw, -0.26, 0.26)
 
                     # Check yaw
                     # if not check_yaw:
                     if check_yaw_counter < 2:
                         if (abs(yaw) > self.cfg.yaw_predock_tolerance):
-                            if not self.rotate_with_odom(self.cfg.min_angular_vel, self.cfg.max_angular_vel, yaw): return False
+                            if not self.rotate_with_odom(yaw): return False
                             # check_yaw = True
                             check_yaw_counter += 1
                             continue
@@ -680,7 +677,7 @@ class AutoDockStateMachine(AutoDockServer):
                             
                                 check_y_counter += 1
                                 check_yaw_counter = 0
-                                self.update_polygon_params(1)
+                                self.update_polygon_params(AutodockConst.PICKUP)
                                 continue
 
                             elif (mode == self.mode.MODE_DROPOFF):
@@ -694,7 +691,7 @@ class AutoDockStateMachine(AutoDockServer):
                             continue
 
                         elif (mode == self.mode.MODE_PICKUP):
-                            self.update_polygon_params(1)
+                            self.update_polygon_params(AutodockConst.PICKUP)
                         
                 self.printout_success("Completed!")
                 return True
