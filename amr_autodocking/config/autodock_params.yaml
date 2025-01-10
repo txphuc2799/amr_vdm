@@ -17,21 +17,12 @@ last_frame: last_frame
 tag_frame: tag_frame
 parallel_frame: parallel_frame
 
-# Custom dock
-# custom_dock_name:
-#   clr55_dropoff:
-#     action1:
-#       rotate: -92
-#       move: -0.5
-#     action2:
-#       rotate: 92
-
 # Goal threshold
 stop_trans_diff: 0.02         # [m]
+stop_yaw_diff: 0.01           # [rad]
 y_tolerance_pid: 0.015        # [m]
-max_parallel_offset: 0.02     # [m] - will move to parallel.c if exceeded
-yaw_predock_tolerance: 0.055  # [rad]
-stop_yaw_diff: 0.05           # [rad]
+max_parallel_offset: 0.01     # [m] - will move to parallel.c if exceeded
+yaw_predock_tolerance: 0.02   # [rad]
 predock_tf_samples: 5         # tf samples to avg, parallel.c validation
 
 # Velocity informations
@@ -39,8 +30,6 @@ max_angular_vel: 0.3                  # [rad/s]
 min_angular_vel: 0.05                 # [rad/s]
 max_linear_vel: 0.3
 min_linear_vel: 0.035                 # [m/s]
-# max_linear_vel: 0.1
-# min_linear_vel: 0.035                 # [m/s]
 rotate_to_heading_angular_vel: 0.5
 max_angular_accel: 3.2
 max_angular_deccel: 0.3

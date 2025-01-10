@@ -74,7 +74,7 @@ class Parameter():
     map_frame_id = "map"
     odom_frame_id = "odom"
     robot_base_frame_id = "base_footprint"
-    distance_tolerance = 2.0
+    distance_tolerance = 3.0
     frequency = 100
     tf_expiry = 1.0
     max_x_move = 0.2
@@ -155,7 +155,7 @@ class AutoNavigation():
         self.is_stopped_ = False
         self.is_pausing_  = False
         self.error = 2   #[0] - Loi cap hang, [1] - Loi lay hang, [2] - Loi vi tri
-        self.prev_state = None
+        self.mode_state_ = None
 
         ### Waypoints:
         # LINE 55
@@ -665,7 +665,7 @@ class AutoNavigation():
     
     def send_auto_docking(self, mode:int, dock_name:str, tag_ids=[],
                           angle_to_dock=0, correction_angle=0,
-                          rotate_type=BOTH, distance_go_out=None):
+                          rotate_type=BOTH, distance_go_out=0.0):
         """
         `rotate_type = ONLY_LEFT`: Clockwise rotating
 
@@ -826,7 +826,7 @@ class AutoNavigation():
         self.runonce(True)
         self.turn_off_brake(False)
 
-        if self.prev_state == self.start_state.CHARGER:
+        if self.mode_state_ == self.start_state.CHARGER:
             if (not self.move_with_odom(self.params.min_linear_vel, self.params.max_linear_vel, -1.0)):
                 ERROR("AutoNavigation: Navigation is failed!")
                 self.error = 2
@@ -837,14 +837,14 @@ class AutoNavigation():
             self.pub_turn_off_ultrasonic_safety.publish(False)
 
         if state.start_state[0] == self.start_state.LINE_55:
-            self.prev_state = self.start_state.LINE_55
+            self.mode_state_ = self.start_state.LINE_55
             if not self.line_55_navigation(state.start_state[1]):
                 ERROR("AutoNavigation: Navigation is failed!")
                 self.publish_mode_error(self.error)
                 self.reset()
                 return False
         elif state.start_state[0] == self.start_state.LINE_56:
-            self.prev_state = self.start_state.LINE_56
+            self.mode_state_ = self.start_state.LINE_56
             if not self.line_56_navigation(state.start_state[1]):
                 ERROR("AutoNavigation: Navigation is failed!")
                 self.publish_mode_error(self.error)
@@ -852,12 +852,14 @@ class AutoNavigation():
                 return False
         
         elif state.start_state[0] == self.start_state.CHARGER:
-            self.prev_state = self.start_state.CHARGER
+            self.mode_state_ = self.start_state.CHARGER
             if not self.navigate_to_charger():
                 ERROR("AutoNavigation: Navigation is failed!")
                 self.publish_mode_error(self.error)
                 self.reset()
                 return False
+            INFO("AutoNavigation: AMR is charging...")
+            self.reset()
             return True
         
         idle_goal = self.get_pose_from_yaml("idle_goal")

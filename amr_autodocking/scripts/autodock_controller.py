@@ -733,7 +733,7 @@ class AutoDockStateMachine(AutoDockServer):
             if not self.lastmile_with_dropoff():
                 return False
         elif (mode == self.mode.MODE_CHARGE):
-            if not self.move_with_odom(0.02, 0.03, 0.14):
+            if not self.move_with_odom(0.04, 0.055, 0.155):
                 return False
             
         self.printout_success("Completed!")
